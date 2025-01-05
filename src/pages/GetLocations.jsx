@@ -10,11 +10,8 @@ const GetLocations = () => {
   useEffect(() => {
     const loadLocations = async () => {
       try {
-        console.log('Loading locations for event:', id);
         setLoading(true);
         const locationsData = await fetchEventRawLocations(id);
-
-        console.log('Locations:', locationsData);
 
         // Ordenar las ubicaciones en orden inverso según el timestamp
         const sortedLocations = locationsData.sort(
