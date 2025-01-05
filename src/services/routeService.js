@@ -56,3 +56,21 @@ export const fetchDeleteRouteMarker = async (id) => {
     console.error('Error al eliminar el marcador:', error);
   }
 };
+
+// Eliminar todas las rutas de un evento
+export const fetchDeleteAllRoutes = async (code) => {
+  try {
+    const response = await fetch(`${API_URL}/event/${code}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al eliminar todas las rutas del evento');
+    }
+
+    console.log('Todas las rutas han sido eliminadas correctamente.');
+  } catch (error) {
+    console.error('Error al eliminar todas las rutas:', error);
+    throw error;
+  }
+};

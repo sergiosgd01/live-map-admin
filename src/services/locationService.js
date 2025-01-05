@@ -49,3 +49,19 @@ export const fetchDeleteLocation = async (locationId) => {
     throw error;
   }
 };
+
+export const fetchDeleteAllLocations = async (eventCode) => {
+  try {
+    const response = await fetch(`${API_URL}/event/${eventCode}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Error al eliminar todas las ubicaciones');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error al eliminar todas las ubicaciones:', error);
+    throw error;
+  }
+};
+

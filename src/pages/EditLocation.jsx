@@ -1,26 +1,24 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMap } from '../components/SharedMap';
-import { fetchEventLocations, fetchAddLocation, fetchDeleteLocation } from '../services/locationService';
+import { fetchEventLocations, fetchAddLocation, fetchDeleteLocation, fetchDeleteAllLocations } from '../services/locationService';
 
 const EditLocation = ({ id }) => {
   const map = useMap();
-  const markersRef = useRef([]); // Referencia para rastrear marcadores
-  const polylineRef = useRef(null); // Referencia para la línea de la ruta
-  const tempPolylineRef = useRef(null); // Referencia para la línea de los puntos temporales
-  const tempMarkersRef = useRef([]); // Referencia para marcadores temporales
-  const [newPoints, setNewPoints] = useState([]); // Estado para puntos nuevos
-  const [selectedMarkers, setSelectedMarkers] = useState([]); // Marcadores seleccionados
-  const [isMapCentered, setIsMapCentered] = useState(false); // Estado para verificar si el mapa ya se centró
-  const [mode, setMode] = useState(''); // Estado para el modo actual ('insert', 'delete')
+  const markersRef = useRef([]);
+  const polylineRef = useRef(null);
+  const tempPolylineRef = useRef(null);
+  const tempMarkersRef = useRef([]);
+  const [newPoints, setNewPoints] = useState([]);
+  const [selectedMarkers, setSelectedMarkers] = useState([]);
+  const [isMapCentered, setIsMapCentered] = useState(false);
+  const [mode, setMode] = useState('');
 
   const clearTemporaryMarkersAndLines = () => {
-    // Limpia marcadores temporales
     tempMarkersRef.current.forEach((marker) => marker.setMap(null));
     tempMarkersRef.current = [];
     setSelectedMarkers([]);
     setNewPoints([]);
 
-    // Limpia la línea temporal
     if (tempPolylineRef.current) {
       tempPolylineRef.current.setMap(null);
       tempPolylineRef.current = null;
@@ -113,14 +111,14 @@ const EditLocation = ({ id }) => {
   };
 
   useEffect(() => {
-    clearTemporaryMarkersAndLines(); // Limpia temporales al cambiar de modo
+    clearTemporaryMarkersAndLines();
     loadLocationMarkers();
 
     if (map && mode === 'insert') {
       const handleMapClick = (e) => {
         const { latLng } = e;
         const newPoint = { latitude: latLng.lat(), longitude: latLng.lng() };
-    
+
         const tempMarker = new window.google.maps.Marker({
           position: { lat: newPoint.latitude, lng: newPoint.longitude },
           map,
@@ -134,52 +132,24 @@ const EditLocation = ({ id }) => {
             strokeColor: 'black',
           },
         });
-    
-        // Agregar evento para eliminar marcador temporal al hacer clic
+
         tempMarker.addListener('click', () => {
-          // Eliminar el marcador del mapa
           tempMarker.setMap(null);
-    
-          // Eliminar el marcador de la referencia y los puntos nuevos
           tempMarkersRef.current = tempMarkersRef.current.filter((marker) => marker !== tempMarker);
           setNewPoints((prev) => prev.filter((point) => point.latitude !== newPoint.latitude || point.longitude !== newPoint.longitude));
         });
-    
-        tempMarkersRef.current.push(tempMarker); // Almacena marcador temporal
+
+        tempMarkersRef.current.push(tempMarker);
         setNewPoints((prev) => [...prev, newPoint]);
       };
-    
+
       map.addListener('click', handleMapClick);
-    
+
       return () => {
         window.google.maps.event.clearListeners(map, 'click');
       };
     }
   }, [map, id, loadLocationMarkers, mode]);
-
-  useEffect(() => {
-    if (!map) return;
-
-    if (tempPolylineRef.current) {
-      tempPolylineRef.current.setMap(null);
-      tempPolylineRef.current = null;
-    }
-
-    if (newPoints.length > 0) {
-      const existingMarkersPath = markersRef.current.map((marker) => marker.getPosition().toJSON());
-      const newPointsPath = newPoints.map((point) => ({ lat: point.latitude, lng: point.longitude }));
-
-      const combinedPath = [...existingMarkersPath, ...newPointsPath];
-      tempPolylineRef.current = new window.google.maps.Polyline({
-        path: combinedPath,
-        geodesic: true,
-        strokeColor: '#FFA500',
-        strokeOpacity: 1.0,
-        strokeWeight: 2,
-      });
-      tempPolylineRef.current.setMap(map);
-    }
-  }, [newPoints, map]);
 
   const handleInsertPoints = async () => {
     if (newPoints.length === 0) {
@@ -188,13 +158,7 @@ const EditLocation = ({ id }) => {
     }
     try {
       for (const point of newPoints) {
-        // Aquí incluimos explícitamente el eventCode al enviar los datos
-        const locationData = {
-          latitude: point.latitude,
-          longitude: point.longitude,
-          code: id, // Asegúrate de pasar el id como eventCode
-        };
-  
+        const locationData = { latitude: point.latitude, longitude: point.longitude, code: id };
         await fetchAddLocation(locationData);
       }
       clearTemporaryMarkersAndLines();
@@ -205,7 +169,7 @@ const EditLocation = ({ id }) => {
       alert('Error al insertar puntos');
     }
   };
-  
+
   const handleDeleteSelectedPoints = async () => {
     if (selectedMarkers.length === 0) {
       alert('Debe seleccionar al menos un marcador para eliminar.');
@@ -222,12 +186,25 @@ const EditLocation = ({ id }) => {
       console.error('Error al eliminar puntos:', error);
       alert('Error al eliminar puntos');
     }
-  }; 
+  };
+
+  const handleDeleteAllLocations = async () => {
+    try {
+      if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
+        await fetchDeleteAllLocations(id);
+        alert('Todas las ubicaciones se han eliminado correctamente.');
+        await loadLocationMarkers();
+      }
+    } catch (error) {
+      console.error('Error al eliminar todas las ubicaciones:', error);
+      alert('Error al eliminar todas las ubicaciones');
+    }
+  };
 
   return (
     <>
       <button
-        onClick={() => setMode('insert')}
+        onClick={() => setMode((prev) => (prev === 'insert' ? '' : 'insert'))}
         style={{
           position: 'absolute',
           top: '10px',
@@ -244,7 +221,7 @@ const EditLocation = ({ id }) => {
         Insertar Puntos
       </button>
       <button
-        onClick={() => setMode('delete')}
+        onClick={() => setMode((prev) => (prev === 'delete' ? '' : 'delete'))}
         style={{
           position: 'absolute',
           top: '50px',
@@ -259,6 +236,23 @@ const EditLocation = ({ id }) => {
         }}
       >
         Eliminar Puntos
+      </button>
+      <button
+        onClick={handleDeleteAllLocations}
+        style={{
+          position: 'absolute',
+          top: '90px',
+          left: '10px',
+          zIndex: 1000,
+          padding: '10px 20px',
+          backgroundColor: '#dc3545',
+          color: 'white',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: 'pointer',
+        }}
+      >
+        Eliminar Todas
       </button>
       {mode === 'insert' && (
         <button

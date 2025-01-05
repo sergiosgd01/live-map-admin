@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchEventRawLocations } from '../services/rawLocationService';
+import { fetchEventRawLocations, deleteAllEventRawLocations } from '../services/rawLocationService';
 
 const GetLocations = () => {
   const { id } = useParams(); // Extrae el parámetro `id` de la URL
@@ -65,8 +65,35 @@ const GetLocations = () => {
     );
   };
 
+  const handleDeleteAllLocations = async () => {
+    try {
+      if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
+        await deleteAllEventRawLocations(id);
+        setLocations([]); // Limpia las ubicaciones en el estado
+        alert('Todas las ubicaciones han sido eliminadas correctamente.');
+      }
+    } catch (error) {
+      console.error('Error al eliminar todas las ubicaciones:', error);
+      alert('Error al eliminar las ubicaciones. Por favor, inténtalo de nuevo.');
+    }
+  };
+
   return (
     <div>
+      <button
+        onClick={handleDeleteAllLocations}
+        style={{
+          padding: '10px 20px',
+          backgroundColor: '#dc3545',
+          color: 'white',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: 'pointer',
+          marginBottom: '20px',
+        }}
+      >
+        Eliminar todas las ubicaciones
+      </button>
       {loading ? (
         <p>Loading locations...</p>
       ) : locations.length > 0 ? (
