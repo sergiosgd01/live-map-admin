@@ -33,10 +33,36 @@ const Events = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {events.map((event) => (
             <div key={event._id} style={{ border: '1px solid #ccc', borderRadius: '10px', padding: '20px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
+              {event.status === 1 && (
+                <div
+                  style={{
+                    backgroundColor: 'orange',
+                    color: '#000',
+                    padding: '10px',
+                    borderRadius: '5px',
+                    marginBottom: '10px',
+                  }}
+                >
+                  <h3>Evento Suspendido</h3>
+                </div>
+              )}
+              {event.status === 2 && (
+                <div
+                  style={{
+                    backgroundColor: 'red',
+                    color: '#fff',
+                    padding: '10px',
+                    borderRadius: '5px',
+                    marginBottom: '10px',
+                  }}
+                >
+                  <h3>Evento Finalizado</h3>
+                </div>
+              )}
               <h2>{event.name}</h2>
               <p><strong>Código:</strong> {event.code}</p>
               <p><strong>Fechas:</strong> {new Date(event.startDate).toLocaleString()} - {new Date(event.endDate).toLocaleString()}</p>
-              <p><strong>Estado:</strong> {event.status === 0 ? 'Activo' : 'Cancelado'}</p>
+              <p><strong>Estado:</strong> {event.status === 0 ? 'Activo' : event.status === 1 ? 'Suspendido' : 'Finalizado'}</p>
               <p><strong>Código Postal:</strong> {event.postalCode}</p>
               {event.image && (
                 <img 

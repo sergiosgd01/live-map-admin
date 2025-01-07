@@ -29,7 +29,7 @@ const GetLocations = () => {
 
     if (id) {
       loadLocations();
-      const interval = setInterval(loadLocations, 45000); // Actualiza cada 5 segundos
+      const interval = setInterval(loadLocations, 20000); // Actualiza cada 5 segundos
 
       // Limpia el intervalo cuando el componente se desmonte
       return () => clearInterval(interval);

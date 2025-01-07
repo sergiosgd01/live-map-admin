@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useMap } from '../components/SharedMap';
-import { fetchService, fetchServiceTypes, fetchCreateService } from '../services/serviceService';
+import { fetchService, fetchServiceTypes, fetchCreateService, fetchDeleteService, fetchDeleteAllServices } from '../services/serviceService';
 
 const EditService = ({ id }) => {
   const map = useMap();
@@ -11,9 +11,9 @@ const EditService = ({ id }) => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [mode, setMode] = useState(''); // 'insert' or 'delete'
 
   const clearMarkers = () => {
-    console.log('Limpiando marcadores existentes...');
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
   };
@@ -25,15 +25,13 @@ const EditService = ({ id }) => {
     }
 
     try {
-      console.log('Cargando servicios...');
       const existingServices = await fetchService(id);
-      console.log('Servicios obtenidos:', existingServices);
       setServices(existingServices);
 
       clearMarkers();
 
       if (existingServices.length > 0) {
-        existingServices.forEach((service, index) => {
+        existingServices.forEach((service) => {
           const serviceType = serviceTypes.find((type) => type.type === service.type);
 
           const icon = serviceType?.image
@@ -46,8 +44,6 @@ const EditService = ({ id }) => {
                 scaledSize: new window.google.maps.Size(30, 30),
               };
 
-          console.log(`Agregando marcador para servicio: ${service._id}`, { icon });
-
           const marker = new window.google.maps.Marker({
             position: { lat: service.latitude, lng: service.longitude },
             map,
@@ -55,28 +51,54 @@ const EditService = ({ id }) => {
             icon: icon,
           });
 
-          markersRef.current.push(marker);
-
-          if (index === 0 && map) {
-            console.log('Centrando mapa en el primer marcador...');
-            map.panTo({ lat: service.latitude, lng: service.longitude });
-            map.setZoom(14);
+          if (mode === 'delete') {
+            marker.addListener('click', async () => {
+              if (window.confirm('¿Estás seguro de que deseas eliminar este servicio?')) {
+                try {
+                  await fetchDeleteService(service._id);
+                  alert('Servicio eliminado correctamente.');
+                  loadServices();
+                } catch (error) {
+                  console.error('Error al eliminar el servicio:', error);
+                  alert('Error al eliminar el servicio. Inténtelo nuevamente.');
+                }
+              }
+            });
           }
+
+          markersRef.current.push(marker);
         });
+
+        const firstService = existingServices[0];
+        map.panTo({ lat: firstService.latitude, lng: firstService.longitude });
+        map.setZoom(14);
       }
     } catch (error) {
       console.error('Error al cargar los servicios:', error);
     }
   };
 
+  const handleDeleteAllServices = async () => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar todos los servicios? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    try {
+      await fetchDeleteAllServices(id);
+      alert('Todos los servicios han sido eliminados correctamente.');
+      loadServices();
+    } catch (error) {
+      console.error('Error al eliminar todos los servicios:', error);
+      alert('Error al eliminar todos los servicios. Inténtelo nuevamente.');
+    }
+  };
+
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        console.log('Cargando tipos de servicios...');
         const types = await fetchServiceTypes();
-        console.log('Tipos de servicios obtenidos:', types);
         setServiceTypes(types);
-        setIsReady(true); // Marca que los tipos de servicios están listos
+        setIsReady(true);
       } catch (error) {
         console.error('Error al cargar los datos iniciales:', error);
       }
@@ -87,18 +109,16 @@ const EditService = ({ id }) => {
 
   useEffect(() => {
     if (map && isReady) {
-      console.log('Mapa y tipos de servicios listos, cargando servicios...');
       loadServices();
     }
-  }, [map, isReady]);
+  }, [map, isReady, mode]);
 
   useEffect(() => {
-    if (!map) return;
+    if (!map || mode !== 'insert') return;
 
     const handleMapClick = (e) => {
       const { latLng } = e;
       setNewService({ latitude: latLng.lat(), longitude: latLng.lng() });
-      console.log('Nueva ubicación seleccionada:', { latitude: latLng.lat(), longitude: latLng.lng() });
     };
 
     map.addListener('click', handleMapClick);
@@ -106,7 +126,7 @@ const EditService = ({ id }) => {
     return () => {
       window.google.maps.event.clearListeners(map, 'click');
     };
-  }, [map]);
+  }, [map, mode]);
 
   const handleServiceInsert = async () => {
     if (!newService || !selectedType) {
@@ -115,18 +135,12 @@ const EditService = ({ id }) => {
     }
 
     try {
-      console.log('Insertando nuevo servicio...');
       setLoading(true);
-      await fetchCreateService(
-        id,
-        newService.latitude,
-        newService.longitude,
-        selectedType
-      );
+      await fetchCreateService(id, newService.latitude, newService.longitude, selectedType);
       setLoading(false);
       alert('Servicio insertado correctamente.');
       setNewService(null);
-
+      setSelectedType(null);
       loadServices();
     } catch (error) {
       setLoading(false);
@@ -136,56 +150,136 @@ const EditService = ({ id }) => {
   };
 
   return (
-    <div>
-      <h2>Editar Servicios</h2>
-
-      <div>
-        <label htmlFor="serviceType">Seleccionar Tipo de Servicio:</label>
-        <select
-          id="serviceType"
-          value={selectedType || ''}
-          onChange={(e) => setSelectedType(parseInt(e.target.value, 10))}
-        >
-          <option value="" disabled>
-            Selecciona un tipo
-          </option>
-          {serviceTypes.map((type) => (
-            <option key={type._id} value={type.type}>
-              {type.name}
-            </option>
-          ))}
-        </select>
-      </div>
+    <div style={{ position: 'relative' }}>
 
       <button
-        onClick={handleServiceInsert}
-        disabled={loading || !newService || !selectedType}
+        onClick={() => setMode((prev) => (prev === 'insert' ? '' : 'insert'))}
         style={{
-          marginTop: '10px',
+          marginBottom: '10px',
           padding: '10px 20px',
-          backgroundColor: '#007bff',
+          backgroundColor: mode === 'insert' ? '#007bff' : '#6c757d',
           color: 'white',
           border: 'none',
           borderRadius: '5px',
-          cursor: loading ? 'not-allowed' : 'pointer',
+          cursor: 'pointer',
         }}
       >
-        {loading ? 'Cargando...' : 'Insertar Servicio'}
+        {mode === 'insert' ? 'Cancelar Inserción' : 'Insertar Servicio'}
       </button>
 
-      <div>
-        <h3>Servicios Existentes:</h3>
-        <ul>
-          {services.map((service) => {
-            const serviceType = serviceTypes.find((type) => type.type === service.type);
-            return (
-              <li key={service._id}>
-                Tipo: {serviceType ? serviceType.name : service.type} | Lat: {service.latitude} | Lng: {service.longitude}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+      <button
+        onClick={() => setMode((prev) => (prev === 'delete' ? '' : 'delete'))}
+        style={{
+          marginBottom: '10px',
+          padding: '10px 20px',
+          backgroundColor: mode === 'delete' ? '#dc3545' : '#6c757d',
+          color: 'white',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: 'pointer',
+        }}
+      >
+        {mode === 'delete' ? 'Cancelar Eliminación' : 'Eliminar Servicio'}
+      </button>
+
+      <button
+        onClick={handleDeleteAllServices}
+        style={{
+          marginBottom: '10px',
+          padding: '10px 20px',
+          backgroundColor: '#dc3545',
+          color: 'white',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: 'pointer',
+        }}
+      >
+        Eliminar Todos los Servicios
+      </button>
+
+      {mode === 'insert' && newService && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '20px',
+              borderRadius: '5px',
+              width: '300px',
+            }}
+          >
+            <h3>Insertar Servicio</h3>
+            <p>
+              <strong>Latitud:</strong> {newService?.latitude}
+            </p>
+            <p>
+              <strong>Longitud:</strong> {newService?.longitude}
+            </p>
+
+            <label htmlFor="serviceTypeModal">Seleccionar Tipo de Servicio:</label>
+            <select
+              id="serviceTypeModal"
+              value={selectedType || ''}
+              onChange={(e) => setSelectedType(parseInt(e.target.value, 10))}
+              style={{ width: '100%', marginBottom: '10px' }}
+            >
+              <option value="" disabled>
+                Selecciona un tipo
+              </option>
+              {serviceTypes.map((type) => (
+                <option key={type._id} value={type.type}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={handleServiceInsert}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '10px',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {loading ? 'Cargando...' : 'Insertar Servicio'}
+            </button>
+
+            <button
+              onClick={() => setNewService(null)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                marginTop: '10px',
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

@@ -16,13 +16,15 @@ const EditRoute = ({ id }) => {
   const [newPoints, setNewPoints] = useState([]);
   const [selectedMarkers, setSelectedMarkers] = useState([]);
   const [isMapCentered, setIsMapCentered] = useState(false);
-  const [mode, setMode] = useState(''); // Estado para el modo actual ('insert', 'delete', '')
+  const [mode, setMode] = useState('');
+  const [selectedPoint, setSelectedPoint] = useState(null); // Store clicked marker info
 
   const clearTemporaryMarkersAndLines = () => {
     tempMarkersRef.current.forEach((marker) => marker.setMap(null));
     tempMarkersRef.current = [];
     setSelectedMarkers([]);
     setNewPoints([]);
+    setSelectedPoint(null);
 
     if (tempPolylineRef.current) {
       tempPolylineRef.current.setMap(null);
@@ -76,6 +78,15 @@ const EditRoute = ({ id }) => {
               });
               return [...prev, marker._id];
             }
+          });
+        });
+      } else if (mode === '') {
+        // Add click listener to show marker info
+        newMarker.addListener('click', () => {
+          setSelectedPoint({
+            id: marker._id,
+            latitude: marker.latitude,
+            longitude: marker.longitude,
           });
         });
       }
@@ -206,11 +217,6 @@ const EditRoute = ({ id }) => {
     }
   };
 
-  const resetMode = () => {
-    setMode('');
-    clearTemporaryMarkersAndLines();
-  };
-
   return (
     <>
       <button
@@ -301,6 +307,40 @@ const EditRoute = ({ id }) => {
         >
           Confirmar Eliminación
         </button>
+      )}
+      {selectedPoint && mode === '' && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '150px',
+            left: '10px',
+            backgroundColor: 'white',
+            border: '1px solid #ccc',
+            padding: '10px',
+            borderRadius: '5px',
+            zIndex: 1000,
+            width: '250px',
+          }}
+        >
+          <h4>Información del Punto</h4>
+          <p><strong>ID:</strong> {selectedPoint.id}</p>
+          <p><strong>Latitud:</strong> {selectedPoint.latitude}</p>
+          <p><strong>Longitud:</strong> {selectedPoint.longitude}</p>
+          <button
+            onClick={() => setSelectedPoint(null)}
+            style={{
+              marginTop: '10px',
+              padding: '5px 10px',
+              backgroundColor: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+            }}
+          >
+            Cerrar
+          </button>
+        </div>
       )}
     </>
   );

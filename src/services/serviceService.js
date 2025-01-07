@@ -49,3 +49,36 @@ export const fetchCreateService = async (code, latitude, longitude, type) => {
     throw error;
   }
 };
+
+export const fetchDeleteService = async (id) => {
+  try {
+    const response = await fetch(`${SERVICE_API_URL}/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al eliminar el servicio');
+    }
+  } catch (error) {
+    console.error('Error al eliminar el servicio:', error);
+    throw error;
+  }
+};
+
+// Eliminar todos los servicios de un evento
+export const fetchDeleteAllServices = async (code) => {
+  try {
+    const response = await fetch(`${SERVICE_API_URL}/deleteAll/${code}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al eliminar todas los servicios del evento');
+    }
+
+    console.log('Todos los servicios han sido eliminados correctamente.');
+  } catch (error) {
+    console.error('Error al eliminar todos los servicios:', error);
+    throw error;
+  }
+};
