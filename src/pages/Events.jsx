@@ -1,16 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchEventsByOrganization } from '../services/eventService';
+import { fetchEventsByOrganization, deleteEvent } from '../services/eventService';
+import { fetchOrganizationByCode } from '../services/organizationService'; // Importar el servicio
 
 const Events = () => {
-  const { organizationCode } = useParams(); // Obtén el código de la organización desde la URL
+  const { organizationCode } = useParams();
   const [events, setEvents] = useState([]);
+  const [organizationName, setOrganizationName] = useState(''); // Estado para el nombre de la organización
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const loadEvents = async () => {
+    const loadOrganizationAndEvents = async () => {
       try {
+        // Obtener la organización por su ID
+        console.log('organizationCode:', organizationCode);
+        const organization = await fetchOrganizationByCode(organizationCode);
+        setOrganizationName(organization.name); // Guardar el nombre de la organización
+
+        // Obtener los eventos de la organización
         const data = await fetchEventsByOrganization(organizationCode);
         setEvents(data);
       } catch (err) {
@@ -20,15 +28,41 @@ const Events = () => {
       }
     };
 
-    loadEvents();
+    loadOrganizationAndEvents();
   }, [organizationCode]);
+
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este evento?')) {
+      try {
+        await deleteEvent(id);
+        alert('Evento eliminado exitosamente');
+        setEvents(events.filter((event) => event._id !== id));
+      } catch (err) {
+        console.error('Error al eliminar el evento:', err);
+        alert('Error al eliminar el evento: ' + err.message);
+      }
+    }
+  };
 
   if (loading) return <p>Cargando eventos...</p>;
   if (error) return <p>Error: {error}</p>;
 
+  const buttonStyle = {
+    padding: '10px',
+    border: 'none',
+    borderRadius: '5px',
+    color: 'white',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+    width: '200px',
+    textAlign: 'center',
+  };
+
   return (
     <div style={{ padding: '20px' }}>
-      <h1 style={{ textAlign: 'center' }}>Eventos de la Organización {organizationCode}</h1>
+      <h1 style={{ textAlign: 'center' }}>
+        Eventos de la Organización {organizationName || organizationCode}
+      </h1>
       {events.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {events.map((event) => (
@@ -62,31 +96,38 @@ const Events = () => {
               <h2>{event.name}</h2>
               <p><strong>Código:</strong> {event.code}</p>
               <p><strong>Fechas:</strong> {new Date(event.startDate).toLocaleString()} - {new Date(event.endDate).toLocaleString()}</p>
-              <p><strong>Estado:</strong> {event.status === 0 ? 'Activo' : event.status === 1 ? 'Suspendido' : 'Finalizado'}</p>
               <p><strong>Código Postal:</strong> {event.postalCode}</p>
               {event.image && (
-                <img 
-                  src={event.image} 
-                  alt={event.name} 
-                  style={{ width: '200px', height: 'auto', marginBottom: '10px' }} 
+                <img
+                  src={event.image}
+                  alt={event.name}
+                  style={{ width: '200px', height: 'auto', marginBottom: '10px' }}
                 />
               )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <Link to={`/events/${event._id}/edit`}>
-                  <button style={{ padding: '10px', border: 'none', borderRadius: '5px', backgroundColor: '#007bff', color: 'white', cursor: 'pointer' }}>Editar Datos</button>
+                  <button style={{ ...buttonStyle, backgroundColor: '#007bff' }}>Editar Datos</button>
                 </Link>
                 <Link to={`/events/${event.code}/locations`}>
-                  <button style={{ padding: '10px', border: 'none', borderRadius: '5px', backgroundColor: '#007bff', color: 'white', cursor: 'pointer' }}>Ver ubicaciones</button>
+                  <button style={{ ...buttonStyle, backgroundColor: '#6c757d' }}>Ver ubicaciones</button>
                 </Link>
                 <Link to={`/events/${event.code}/edit-location`}>
-                  <button style={{ padding: '10px', border: 'none', borderRadius: '5px', backgroundColor: '#28a745', color: 'white', cursor: 'pointer' }}>Editar Ubicaciones</button>
+                  <button style={{ ...buttonStyle, backgroundColor: '#28a745' }}>Editar Ubicaciones</button>
                 </Link>
                 <Link to={`/events/${event.code}/edit-route`}>
-                  <button style={{ padding: '10px', border: 'none', borderRadius: '5px', backgroundColor: '#ffc107', color: 'black', cursor: 'pointer' }}>Editar Ruta</button>
+                  <button style={{ ...buttonStyle, backgroundColor: '#ffc107', color: 'black' }}>Editar Ruta</button>
                 </Link>
                 <Link to={`/events/${event.code}/edit-service`}>
-                  <button style={{ padding: '10px', border: 'none', borderRadius: '5px', backgroundColor: '#dc3545', color: 'white', cursor: 'pointer' }}>Editar Servicios</button>
+                  <button style={{ ...buttonStyle, backgroundColor: '#17a2b8' }}>Editar Servicios</button>
                 </Link>
+                <button
+                  style={{ ...buttonStyle, backgroundColor: '#d9534f' }}
+                  onClick={() => handleDelete(event._id)}
+                  onMouseOver={(e) => e.target.style.backgroundColor = '#c9302c'}
+                  onMouseOut={(e) => e.target.style.backgroundColor = '#d9534f'}
+                >
+                  Eliminar Evento
+                </button>
               </div>
             </div>
           ))}
@@ -94,6 +135,22 @@ const Events = () => {
       ) : (
         <p style={{ textAlign: 'center' }}>No hay eventos registrados para esta organización.</p>
       )}
+      <Link to={`/organizations/${organizationCode}/add-event`}>
+        <button style={{
+          padding: '10px 20px',
+          backgroundColor: 'green',
+          color: 'white',
+          border: 'none',
+          borderRadius: '50%',
+          fontSize: '20px',
+          cursor: 'pointer',
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px'
+        }}>
+          +
+        </button>
+      </Link>
     </div>
   );
 };

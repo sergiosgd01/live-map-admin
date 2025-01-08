@@ -1,4 +1,4 @@
-const API_URL = 'https://api-backend-tfg.onrender.com/api/events/';
+const API_URL = 'https://api-backend-tfg.onrender.com/api/events';
 
 export const fetchEventsByOrganization = async (organizationCode) => {
   try {
@@ -59,6 +59,99 @@ export const updateEvent = async (id, updatedEvent) => {
     return await response.json();
   } catch (error) {
     console.error('Error al actualizar el evento:', error);
+    throw error;
+  }
+};
+
+// // Verificar si un evento existe por código
+// export const fetchEventByCode = async (code) => {
+//   try {
+//     const response = await fetch(`${API_URL}/${code}`, {
+//       method: 'GET',
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//     });
+
+//     if (response.status === 404) {
+//       return null; // El código no existe en la base de datos
+//     }
+
+//     if (!response.ok) {
+//       throw new Error('Error al verificar el código del evento');
+//     }
+
+//     return await response.json(); // El código ya existe en la base de datos
+//   } catch (error) {
+//     console.error('Error al verificar el código del evento:', error);
+//     throw error;
+//   }
+// };
+
+export const checkCodeExists = async (id, code) => {
+  try {
+    console.log('id:', id);
+    const url = id
+      ? `${API_URL}/checkCodeExists/${code}?id=${id}`
+      : `${API_URL}/checkCodeExists/${code}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al verificar la existencia del código');
+    }
+
+    const data = await response.json();
+    return data.exists;
+  } catch (error) {
+    console.error('Error al verificar la existencia del código:', error);
+    throw error;
+  }
+};
+
+// Crear un nuevo evento
+export const addEvent = async (event) => {
+  try {
+    const response = await fetch(`${API_URL}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(event), // Ya no incluye `code`
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al crear el evento');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error al crear el evento:', error);
+    throw error;
+  }
+};
+
+export const deleteEvent = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al eliminar el evento');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error al eliminar el evento:', error);
     throw error;
   }
 };

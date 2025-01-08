@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchAllUsers, deleteUser } from '../services/userService';
+import { fetchAllUsers, deleteUser } from '../../services/userService';
 
 const Users = () => {
   const [users, setUsers] = useState([]); // Estado para almacenar los usuarios
@@ -12,7 +12,6 @@ const Users = () => {
     const loadUsers = async () => {
       try {
         const data = await fetchAllUsers();
-        console.log(data);
         setUsers(data);
       } catch (err) {
         setError(err.message);
@@ -77,6 +76,27 @@ const Users = () => {
           ))}
         </tbody>
       </table>
+
+      {/* Botón flotante para añadir usuarios */}
+      <button
+        onClick={() => navigate('/users/add')}
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          width: '50px',
+          height: '50px',
+          borderRadius: '50%',
+          backgroundColor: 'green',
+          color: 'white',
+          fontSize: '24px',
+          border: 'none',
+          cursor: 'pointer',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        }}
+      >
+        +
+      </button>
     </div>
   );
 };

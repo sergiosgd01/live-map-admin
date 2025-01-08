@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchEventById, updateEvent } from '../services/eventService';
+import { fetchEventById, updateEvent, checkCodeExists } from '../services/eventService';
 import { fetchOrganizations } from '../services/organizationService';
 
 const EditEvent = () => {
-  const { id } = useParams(); // Obtener el ID del evento desde la URL
+  const { id } = useParams();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
-  const [organizations, setOrganizations] = useState([]); // Lista de organizaciones
+  const [organizations, setOrganizations] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showModal, setShowModal] = useState(false); // Mostrar modal para suspensión
-  const [cancelInfo, setCancelInfo] = useState(''); // Información de cancelación
+  const [showModal, setShowModal] = useState(false); 
+  const [cancelInfo, setCancelInfo] = useState('');
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     const loadEventAndOrganizations = async () => {
@@ -33,20 +34,66 @@ const EditEvent = () => {
 
   const handleInputChange = (field, value) => {
     setEvent({ ...event, [field]: value });
+    setErrors({ ...errors, [field]: '' }); 
   };
+
+  const validateForm = async () => {
+    if (!event) return false; // Si `event` es null, la validación falla.
+    const newErrors = {};
+  
+    if (!event.name || event.name.trim() === '') {
+      newErrors.name = 'El nombre no puede estar vacío';
+    }
+  
+    if (!event.code || isNaN(Number(event.code))) {
+      newErrors.code = 'El código no puede estar vacío y debe ser un número';
+    } else {
+      try {
+        const codeExists = await checkCodeExists(event._id, event.code);
+        if (codeExists) {
+          newErrors.code = 'El código ya existe en la base de datos';
+        }
+      } catch (err) {
+        console.error('Error al verificar el código:', err);
+        newErrors.code = 'Error al verificar el código, inténtelo nuevamente';
+      }
+    }    
+  
+    if (!event.postalCode || event.postalCode.trim() === '') {
+      newErrors.postalCode = 'El código postal no puede estar vacío';
+    }
+  
+    if (!event.time || isNaN(event.time)) {
+      newErrors.time = 'El tiempo de actualización debe ser un número';
+    }
+  
+    if (!event.organizationCode || event.organizationCode === '') {
+      newErrors.organizationCode = 'Debe seleccionar un código de organización';
+    }
+  
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0; // Devuelve true si no hay errores
+  };  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const isValid = await validateForm();
+    if (!isValid) {
+      alert('Por favor, corrija los errores antes de enviar el formulario.');
+      return;
+    }
+  
     try {
       await updateEvent(id, event);
       alert('Evento actualizado exitosamente');
       const updatedEvent = await fetchEventById(id);
       setEvent(updatedEvent);
+      navigate(`/organizations/${event.organizationCode}/events`);
     } catch (err) {
       console.error('Error al actualizar el evento:', err);
       alert('Error al actualizar el evento: ' + err.message);
     }
-  };
+  };  
 
   const handleResumeEvent = async () => {
     try {
@@ -66,7 +113,7 @@ const EditEvent = () => {
     try {
       await updateEvent(id, { ...event, status: 1, cancelledInfo: cancelInfo });
       alert('Evento suspendido exitosamente');
-      setShowModal(false); // Cierra el modal
+      setShowModal(false);
       const updatedEvent = await fetchEventById(id);
       setEvent(updatedEvent);
     } catch (err) {
@@ -136,6 +183,7 @@ const EditEvent = () => {
             onChange={(e) => handleInputChange('name', e.target.value)}
             style={{ width: '100%' }}
           />
+          {errors.name && <p style={{ color: 'red', margin: 0 }}>{errors.name}</p>}
         </label>
         <br />
         <label>
@@ -146,6 +194,7 @@ const EditEvent = () => {
             onChange={(e) => handleInputChange('code', e.target.value)}
             style={{ width: '100%' }}
           />
+          {errors.code && <p style={{ color: 'red', margin: 0 }}>{errors.code}</p>}
         </label>
         <br />
         <label>
@@ -156,6 +205,7 @@ const EditEvent = () => {
             onChange={(e) => handleInputChange('postalCode', e.target.value)}
             style={{ width: '100%' }}
           />
+          {errors.postalCode && <p style={{ color: 'red', margin: 0 }}>{errors.postalCode}</p>}
         </label>
         <br />
         <label>
@@ -166,20 +216,15 @@ const EditEvent = () => {
             onChange={(e) => handleInputChange('time', e.target.value)}
             style={{ width: '100%' }}
           />
+          {errors.time && <p style={{ color: 'red', margin: 0 }}>{errors.time}</p>}
         </label>
         <br />
         <label>
           Fecha de Inicio:
           <input
             type="datetime-local"
-            value={
-              event.startDate
-                ? event.startDate.replace('Z', '') // Elimina el sufijo `Z` si está presente
-                : ''
-            }
-            onChange={(e) =>
-              handleInputChange('startDate', e.target.value + ':00') // Asegura el formato `YYYY-MM-DDTHH:mm:00`
-            }
+            value={event.startDate ? event.startDate.replace('Z', '') : ''}
+            onChange={(e) => handleInputChange('startDate', e.target.value + ':00')}
             style={{ width: '100%' }}
           />
         </label>
@@ -188,14 +233,8 @@ const EditEvent = () => {
           Fecha de Fin:
           <input
             type="datetime-local"
-            value={
-              event.endDate
-                ? event.endDate.replace('Z', '') // Elimina el sufijo `Z` si está presente
-                : ''
-            }
-            onChange={(e) =>
-              handleInputChange('endDate', e.target.value + ':00') // Asegura el formato `YYYY-MM-DDTHH:mm:00`
-            }
+            value={event.endDate ? event.endDate.replace('Z', '') : ''}
+            onChange={(e) => handleInputChange('endDate', e.target.value + ':00')}
             style={{ width: '100%' }}
           />
         </label>
@@ -221,7 +260,7 @@ const EditEvent = () => {
         </label>
         <br />
         <label>
-          Código de Organización:
+          Organización:
           <select
             value={event.organizationCode || ''}
             onChange={(e) => handleInputChange('organizationCode', e.target.value)}
@@ -236,6 +275,7 @@ const EditEvent = () => {
               </option>
             ))}
           </select>
+          {errors.organizationCode && <p style={{ color: 'red', margin: 0 }}>{errors.organizationCode}</p>}
         </label>
         <br />
         {event.status !== 0 && (
@@ -305,7 +345,7 @@ const EditEvent = () => {
           Guardar Cambios
         </button>
       </form>
-
+  
       {showModal && (
         <div
           style={{
@@ -371,7 +411,7 @@ const EditEvent = () => {
         </div>
       )}
     </div>
-  );
+  );  
 };
 
 export default EditEvent;

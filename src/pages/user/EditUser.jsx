@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchUserById, updateUser } from '../services/userService';
+import { fetchUserById, updateUser } from '../../services/userService';
 
 const EditUser = () => {
-  const { id } = useParams(); // Obtén el ID del usuario desde la URL
+  const { id } = useParams(); 
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Cargar datos del usuario
   useEffect(() => {
     const loadUser = async () => {
       try {
