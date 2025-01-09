@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useMap } from '../components/SharedMap';
+import { useMap } from '../../../components/SharedMap';
 import {
   fetchRouteMarkers,
   fetchDeleteRouteMarker,
   fetchCreateRouteMarker,
   fetchDeleteAllRoutes,
-} from '../services/routeService';
+} from '../../../services/routeService';
 
 const EditRoute = ({ id }) => {
   const map = useMap();
@@ -17,7 +17,7 @@ const EditRoute = ({ id }) => {
   const [selectedMarkers, setSelectedMarkers] = useState([]);
   const [isMapCentered, setIsMapCentered] = useState(false);
   const [mode, setMode] = useState('');
-  const [selectedPoint, setSelectedPoint] = useState(null); // Store clicked marker info
+  const [selectedPoint, setSelectedPoint] = useState(null); 
 
   const clearTemporaryMarkersAndLines = () => {
     tempMarkersRef.current.forEach((marker) => marker.setMap(null));
@@ -81,7 +81,6 @@ const EditRoute = ({ id }) => {
           });
         });
       } else if (mode === '') {
-        // Add click listener to show marker info
         newMarker.addListener('click', () => {
           setSelectedPoint({
             id: marker._id,

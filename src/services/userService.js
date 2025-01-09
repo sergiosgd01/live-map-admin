@@ -1,9 +1,9 @@
-const API_URL = 'https://api-backend-tfg.onrender.com/api/user'; // Cambia la ruta si es necesario
+const API_URL = 'https://api-backend-tfg.onrender.com/api/user';
 
 // Fetch para obtener el listado de usuarios
 export const fetchAllUsers = async () => {
   try {
-    const url = `${API_URL}`; // Asegúrate de que tu backend tiene esta ruta
+    const url = `${API_URL}`; 
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -16,7 +16,7 @@ export const fetchAllUsers = async () => {
     }
 
     const data = await response.json();
-    return data; // Asegúrate de que el backend devuelve el listado de usuarios en data
+    return data; 
   } catch (error) {
     console.error('Error al obtener usuarios:', error.message);
     throw error;
@@ -45,7 +45,7 @@ export const fetchUserById = async (id) => {
 
 export const addUser = async (newUser) => {
   try {
-    const response = await fetch(`${API_URL}/register`, {
+    const response = await fetch(`${API_URL}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ export const deleteUser = async (id) => {
       throw new Error('Error al eliminar el usuario');
     }
 
-    return await response.json(); // Devuelve la respuesta del backend
+    return await response.json(); 
   } catch (error) {
     console.error('Error al eliminar el usuario:', error);
     throw error;

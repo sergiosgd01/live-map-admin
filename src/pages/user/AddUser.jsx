@@ -20,12 +20,10 @@ const AddUser = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Validación del nombre de usuario
     if (!user.username || user.username.trim() === '') {
       newErrors.username = 'El nombre de usuario es obligatorio';
     }
 
-    // Validación del email
     if (!user.email || user.email.trim() === '') {
       newErrors.email = 'El email es obligatorio';
     } else {
@@ -35,7 +33,6 @@ const AddUser = () => {
       }
     }
 
-    // Validación de la contraseña
     if (!user.password || user.password.trim() === '') {
       newErrors.password = 'La contraseña es obligatoria';
     } else {

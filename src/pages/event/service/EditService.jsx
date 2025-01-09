@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useMap } from '../components/SharedMap';
-import { fetchService, fetchServiceTypes, fetchCreateService, fetchDeleteService, fetchDeleteAllServices } from '../services/serviceService';
+import { useMap } from '../../../components/SharedMap';
+import { useNavigate } from 'react-router-dom';
+import { fetchService, fetchCreateService, fetchDeleteService, fetchDeleteAllServices } from '../../../services/serviceService';
+import { fetchServiceTypes } from '../../../services/serviceTypeService';
 
 const EditService = ({ id }) => {
   const map = useMap();
+  const navigate = useNavigate();
   const markersRef = useRef([]);
   const [serviceTypes, setServiceTypes] = useState([]);
   const [selectedType, setSelectedType] = useState(null);
@@ -11,7 +14,7 @@ const EditService = ({ id }) => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const [mode, setMode] = useState(''); // 'insert' or 'delete'
+  const [mode, setMode] = useState(''); 
 
   const clearMarkers = () => {
     markersRef.current.forEach((marker) => marker.setMap(null));
@@ -197,6 +200,22 @@ const EditService = ({ id }) => {
         Eliminar Todos los Servicios
       </button>
 
+      {/* Botón para insertar nuevo tipo de servicio */}
+      <button
+        onClick={() => navigate(`/services`)}
+        style={{
+          marginBottom: '10px',
+          padding: '10px 20px',
+          backgroundColor: '#28a745',
+          color: 'white',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: 'pointer',
+        }}
+      >
+        Administrar Tipos de Servicio
+      </button>
+
       {mode === 'insert' && newService && (
         <div
           style={{
@@ -279,7 +298,6 @@ const EditService = ({ id }) => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

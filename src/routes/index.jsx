@@ -10,13 +10,15 @@ import Organizations from "../pages/organization/Organizations";
 import EditOrganization from "../pages/organization/EditOrganization";
 import AddOrganization from "../pages/organization/AddOrganization";
 
-import Events from "../pages/Events";
-import EditEvent from "../pages/EditEvent";
-import AddEvent from "../pages/AddEvent";
-import EditRoutePage from "../pages/EditRoutePage";
-import EditLocationPage from "../pages/EditLocationPage";
-import EditServicePage from "../pages/EditServicePage";
-import GetLocations from "../pages/GetLocations";
+import Events from "../pages/event/Events";
+import EditEvent from "../pages/event/EditEvent";
+import AddEvent from "../pages/event/AddEvent";
+import EditRoutePage from "../pages/event/route/EditRoutePage";
+import EditLocationPage from "../pages/event/location/EditLocationPage";
+import EditServicePage from "../pages/event/service/EditServicePage";
+import GetLocations from "../pages/event/location/GetLocations";
+import AddServiceType from "../pages/event/service/AddServiceType";
+import ServiceTypeList from "../pages/event/service/ServiceTypeList"; 
 
 const AppRoutes = () => (
   <GoogleMapsProvider>
@@ -38,6 +40,8 @@ const AppRoutes = () => (
         <Route path="/events/:id/edit-route" element={<EditRoutePage />} />
         <Route path="/events/:id/edit-location" element={<EditLocationPage />} />
         <Route path="/events/:id/edit-service" element={<EditServicePage />} />
+        <Route path="/services" element={<ServiceTypeList />} /> 
+        <Route path="/services/add-type" element={<AddServiceType />} />
       </Routes>
     </Router>
   </GoogleMapsProvider>

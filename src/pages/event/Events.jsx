@@ -1,24 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchEventsByOrganization, deleteEvent } from '../services/eventService';
-import { fetchOrganizationByCode } from '../services/organizationService'; // Importar el servicio
+import { fetchEventsByOrganization, deleteEvent } from '../../services/eventService';
+import { fetchOrganizationByCode } from '../../services/organizationService'; 
 
 const Events = () => {
   const { organizationCode } = useParams();
   const [events, setEvents] = useState([]);
-  const [organizationName, setOrganizationName] = useState(''); // Estado para el nombre de la organización
+  const [organizationName, setOrganizationName] = useState(''); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const loadOrganizationAndEvents = async () => {
       try {
-        // Obtener la organización por su ID
         console.log('organizationCode:', organizationCode);
         const organization = await fetchOrganizationByCode(organizationCode);
-        setOrganizationName(organization.name); // Guardar el nombre de la organización
+        setOrganizationName(organization.name); 
 
-        // Obtener los eventos de la organización
         const data = await fetchEventsByOrganization(organizationCode);
         setEvents(data);
       } catch (err) {

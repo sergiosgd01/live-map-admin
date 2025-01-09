@@ -20,7 +20,7 @@ export const fetchAddLocation = async (location) => {
     const response = await fetch(`${API_URL}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ location }), // El backend espera un objeto con la clave "location"
+      body: JSON.stringify({ location }),
     });
 
     if (!response.ok) {

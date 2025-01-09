@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useMap } from '../components/SharedMap';
-import { fetchEventLocations, fetchAddLocation, fetchDeleteLocation, fetchDeleteAllLocations } from '../services/locationService';
+import { useMap } from '../../../components/SharedMap';
+import { fetchEventLocations, fetchAddLocation, fetchDeleteLocation, fetchDeleteAllLocations } from '../../../services/locationService';
 
 const EditLocation = ({ id }) => {
   const map = useMap();
@@ -75,7 +75,6 @@ const EditLocation = ({ id }) => {
           });
         });
       } else if (mode === '') {
-        // Show point details on click when no mode is active
         newMarker.addListener('click', () => {
           setSelectedPoint({
             id: marker._id,

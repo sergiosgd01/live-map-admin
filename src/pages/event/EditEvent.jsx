@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchEventById, updateEvent, checkCodeExists } from '../services/eventService';
-import { fetchOrganizations } from '../services/organizationService';
+import { fetchEventById, updateEvent, checkCodeExists, changeEventStatus } from '../../services/eventService';
+import { fetchOrganizations } from '../../services/organizationService';
 
 const EditEvent = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
-  const [organizations, setOrganizations] = useState([]); 
+  const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showModal, setShowModal] = useState(false); 
+  const [showModal, setShowModal] = useState(false);
   const [cancelInfo, setCancelInfo] = useState('');
   const [errors, setErrors] = useState({});
 
@@ -34,19 +34,21 @@ const EditEvent = () => {
 
   const handleInputChange = (field, value) => {
     setEvent({ ...event, [field]: value });
-    setErrors({ ...errors, [field]: '' }); 
+    setErrors({ ...errors, [field]: '' });
   };
 
   const validateForm = async () => {
-    if (!event) return false; // Si `event` es null, la validación falla.
+    if (!event) return false; 
     const newErrors = {};
-  
+
     if (!event.name || event.name.trim() === '') {
       newErrors.name = 'El nombre no puede estar vacío';
     }
-  
+
     if (!event.code || isNaN(Number(event.code))) {
       newErrors.code = 'El código no puede estar vacío y debe ser un número';
+    } else if (event.code.toString().length > 5) {
+      newErrors.code = 'El código no puede tener más de 5 caracteres';
     } else {
       try {
         const codeExists = await checkCodeExists(event._id, event.code);
@@ -57,23 +59,37 @@ const EditEvent = () => {
         console.error('Error al verificar el código:', err);
         newErrors.code = 'Error al verificar el código, inténtelo nuevamente';
       }
-    }    
-  
+    }
+
     if (!event.postalCode || event.postalCode.trim() === '') {
       newErrors.postalCode = 'El código postal no puede estar vacío';
     }
-  
+
     if (!event.time || isNaN(event.time)) {
       newErrors.time = 'El tiempo de actualización debe ser un número';
     }
-  
+
     if (!event.organizationCode || event.organizationCode === '') {
       newErrors.organizationCode = 'Debe seleccionar un código de organización';
     }
-  
+
+    if (
+      event.image &&
+      !event.image.match(/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/)
+    ) {
+      newErrors.image = 'Debe ser una URL válida de imagen (terminada en jpg, jpeg, png, webp o gif).';
+    }
+
+    if (
+      event.icon &&
+      !event.icon.match(/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/)
+    ) {
+      newErrors.icon = 'Debe ser una URL válida de icono (terminada en jpg, jpeg, png, webp o gif).';
+    }
+
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0; // Devuelve true si no hay errores
-  };  
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -82,7 +98,7 @@ const EditEvent = () => {
       alert('Por favor, corrija los errores antes de enviar el formulario.');
       return;
     }
-  
+
     try {
       await updateEvent(id, event);
       alert('Evento actualizado exitosamente');
@@ -93,29 +109,31 @@ const EditEvent = () => {
       console.error('Error al actualizar el evento:', err);
       alert('Error al actualizar el evento: ' + err.message);
     }
-  };  
+  };
 
   const handleResumeEvent = async () => {
     try {
-      if (window.confirm('¿Estás seguro de que deseas renaudar el evento?')) {
-        await updateEvent(id, { ...event, status: 0 });
-        alert('Evento renaudado exitosamente');
+      if (window.confirm('¿Estás seguro de que deseas reanudar el evento?')) {
+        await changeEventStatus(id, 0); 
+        alert('Evento reanudado exitosamente');
         const updatedEvent = await fetchEventById(id);
         setEvent(updatedEvent);
-      } 
+      }
     } catch (err) {
-      console.error('Error al renaudar el evento:', err);
-      alert('Error al renaudar el evento: ' + err.message);
+      console.error('Error al reanudar el evento:', err);
+      alert('Error al reanudar el evento: ' + err.message);
     }
   };
 
   const handleSuspendEvent = async () => {
     try {
-      await updateEvent(id, { ...event, status: 1, cancelledInfo: cancelInfo });
-      alert('Evento suspendido exitosamente');
-      setShowModal(false);
-      const updatedEvent = await fetchEventById(id);
-      setEvent(updatedEvent);
+      if (window.confirm('¿Estás seguro de que deseas suspender el evento?')) {
+        await changeEventStatus(id, 1, cancelInfo); 
+        alert('Evento suspendido exitosamente');
+        setShowModal(false);
+        const updatedEvent = await fetchEventById(id);
+        setEvent(updatedEvent);
+      }
     } catch (err) {
       console.error('Error al suspender el evento:', err);
       alert('Error al suspender el evento: ' + err.message);
@@ -125,11 +143,11 @@ const EditEvent = () => {
   const handleFinishEvent = async () => {
     try {
       if (window.confirm('¿Estás seguro de que deseas finalizar el evento?')) {
-        await updateEvent(id, { ...event, status: 2 });
+        await changeEventStatus(id, 2);
         alert('Evento finalizado exitosamente');
         const updatedEvent = await fetchEventById(id);
         setEvent(updatedEvent);
-      } 
+      }
     } catch (err) {
       console.error('Error al finalizar el evento:', err);
       alert('Error al finalizar el evento: ' + err.message);
@@ -247,6 +265,7 @@ const EditEvent = () => {
             onChange={(e) => handleInputChange('image', e.target.value)}
             style={{ width: '100%' }}
           />
+          {errors.image && <p style={{ color: 'red', margin: 0 }}>{errors.image}</p>}
         </label>
         <br />
         <label>
@@ -257,6 +276,7 @@ const EditEvent = () => {
             onChange={(e) => handleInputChange('icon', e.target.value)}
             style={{ width: '100%' }}
           />
+          {errors.icon && <p style={{ color: 'red', margin: 0 }}>{errors.icon}</p>}
         </label>
         <br />
         <label>

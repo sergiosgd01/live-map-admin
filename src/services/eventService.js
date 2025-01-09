@@ -122,7 +122,7 @@ export const addEvent = async (event) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(event), // Ya no incluye `code`
+      body: JSON.stringify(event), 
     });
 
     if (!response.ok) {
@@ -152,6 +152,27 @@ export const deleteEvent = async (id) => {
     return await response.json();
   } catch (error) {
     console.error('Error al eliminar el evento:', error);
+    throw error;
+  }
+};
+
+export const changeEventStatus = async (id, action, cancelledInfo = '') => {
+  try {
+    const response = await fetch(`${API_URL}/cancel/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action, cancelledInfo }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al cambiar el estado del evento');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error al cambiar el estado del evento:', error);
     throw error;
   }
 };

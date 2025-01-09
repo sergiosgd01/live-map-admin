@@ -4,7 +4,7 @@ import { addOrganization } from '../../services/organizationService';
 
 const AddOrganization = () => {
   const navigate = useNavigate();
-  const [organization, setOrganization] = useState({ name: '' }); // Elimina el campo `code`
+  const [organization, setOrganization] = useState({ name: '' }); 
   const [errors, setErrors] = useState({});
 
   const handleInputChange = (field, value) => {
@@ -29,7 +29,7 @@ const AddOrganization = () => {
     }
 
     try {
-      await addOrganization(organization); // No envía `code`, solo `name`
+      await addOrganization(organization); 
       alert('Organización creada exitosamente');
       navigate('/organizations');
     } catch (err) {

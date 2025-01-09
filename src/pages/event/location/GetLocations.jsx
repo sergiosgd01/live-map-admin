@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchEventRawLocations, deleteAllEventRawLocations } from '../services/rawLocationService';
+import { fetchEventRawLocations, deleteAllEventRawLocations } from '../../../services/rawLocationService';
 
 const GetLocations = () => {
-  const { id } = useParams(); // Extrae el parámetro `id` de la URL
+  const { id } = useParams(); 
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -13,7 +13,6 @@ const GetLocations = () => {
         setLoading(true);
         const locationsData = await fetchEventRawLocations(id);
 
-        // Ordenar las ubicaciones en orden inverso según el timestamp
         const sortedLocations = locationsData.sort(
           (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
         );
@@ -29,33 +28,30 @@ const GetLocations = () => {
 
     if (id) {
       loadLocations();
-      const interval = setInterval(loadLocations, 20000); // Actualiza cada 5 segundos
+      const interval = setInterval(loadLocations, 20000);
 
-      // Limpia el intervalo cuando el componente se desmonte
       return () => clearInterval(interval);
     }
   }, [id]);
 
-  // Función para determinar el color de fila según el código de error
   const getRowStyle = (errorCode) => {
     switch (errorCode) {
-      case 0: // Sin errores
+      case 0: 
         return { backgroundColor: 'lightgreen' };
-      case 1: // Ubicación igual a la última
+      case 1: 
         return { backgroundColor: 'lightyellow' };
-      case 2: // Baja precisión
+      case 2: 
         return { backgroundColor: 'lightcoral' };
-      default: // Otros casos
+      default: 
         return { backgroundColor: 'white' };
     }
   };
 
-  // Formatear el timestamp para mostrar la hora en negrita
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'N/A';
     const date = new Date(timestamp);
-    const formattedDate = date.toISOString().split('T')[0]; // YYYY-MM-DD
-    const formattedTime = date.toISOString().split('T')[1].split('Z')[0]; // HH:mm:ss
+    const formattedDate = date.toISOString().split('T')[0]; 
+    const formattedTime = date.toISOString().split('T')[1].split('Z')[0];
 
     return (
       <>
@@ -69,7 +65,7 @@ const GetLocations = () => {
     try {
       if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
         await deleteAllEventRawLocations(id);
-        setLocations([]); // Limpia las ubicaciones en el estado
+        setLocations([]); 
         alert('Todas las ubicaciones han sido eliminadas correctamente.');
       }
     } catch (error) {

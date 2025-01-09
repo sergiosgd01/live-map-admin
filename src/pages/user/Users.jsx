@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { fetchAllUsers, deleteUser } from '../../services/userService';
 
 const Users = () => {
-  const [users, setUsers] = useState([]); // Estado para almacenar los usuarios
-  const [loading, setLoading] = useState(true); // Estado para mostrar el indicador de carga
-  const [error, setError] = useState(null); // Estado para errores
-  const navigate = useNavigate(); // Para la navegación
+  const [users, setUsers] = useState([]); 
+  const [loading, setLoading] = useState(true); 
+  const [error, setError] = useState(null); 
+  const navigate = useNavigate(); 
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -27,7 +27,7 @@ const Users = () => {
     if (window.confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
       try {
         await deleteUser(id);
-        setUsers(users.filter(user => user._id !== id)); // Actualiza el estado eliminando el usuario
+        setUsers(users.filter(user => user._id !== id));
         alert('Usuario eliminado exitosamente.');
       } catch (err) {
         alert('Error al eliminar el usuario: ' + err.message);
@@ -77,7 +77,6 @@ const Users = () => {
         </tbody>
       </table>
 
-      {/* Botón flotante para añadir usuarios */}
       <button
         onClick={() => navigate('/users/add')}
         style={{

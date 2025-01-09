@@ -38,6 +38,8 @@ const EditOrganization = () => {
 
     if (!organization.code || isNaN(Number(organization.code))) {
       newErrors.code = 'El código debe ser un número';
+    } else if (organization.code.toString().length > 3) {
+      newErrors.code = 'El código no puede tener más de 3 cifras';
     } else {
       try {
         const organizations = await fetchOrganizations();
@@ -51,7 +53,7 @@ const EditOrganization = () => {
         console.error('Error al verificar el código:', err);
         newErrors.code = 'Error al verificar el código, inténtelo nuevamente';
       }
-    }
+    }    
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;

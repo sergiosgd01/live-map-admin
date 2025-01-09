@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { addEvent } from '../services/eventService';
-import { fetchOrganizations, fetchOrganizationByCode } from '../services/organizationService';
+import { addEvent } from '../../services/eventService';
+import { fetchOrganizations, fetchOrganizationByCode } from '../../services/organizationService';
 
 const AddEvent = () => {
-  const { organizationCode } = useParams(); // Capturamos el código de la organización desde la URL
+  const { organizationCode } = useParams(); 
   const navigate = useNavigate();
   const [event, setEvent] = useState({
     name: '',
@@ -14,7 +14,7 @@ const AddEvent = () => {
     endDate: '',
     image: '',
     icon: '',
-    organizationCode: organizationCode || '', // Preseleccionamos el código de la organización
+    organizationCode: organizationCode || '',
   });
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,11 +25,9 @@ const AddEvent = () => {
     console.log('organizationCode:', organizationCode);
     const loadOrganizations = async () => {
       try {
-        // Cargar todas las organizaciones
         const orgs = await fetchOrganizations();
         setOrganizations(orgs);
-  
-        // Obtener el nombre de la organización por defecto
+
         if (organizationCode) {
           const defaultOrg = await fetchOrganizationByCode(organizationCode);
           console.log('defaultOrg:', defaultOrg);
@@ -41,9 +39,9 @@ const AddEvent = () => {
         setLoading(false);
       }
     };
-  
+
     loadOrganizations();
-  }, [organizationCode]);  
+  }, [organizationCode]);
 
   const handleInputChange = (field, value) => {
     setEvent({ ...event, [field]: value });
@@ -85,6 +83,20 @@ const AddEvent = () => {
       newErrors.organizationCode = 'Debe seleccionar un código de organización';
     }
 
+    if (
+      event.image &&
+      !event.image.match(/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/)
+    ) {
+      newErrors.image = 'Debe ser una URL válida de imagen (terminada en jpg, jpeg, png, webp o gif).';
+    }
+
+    if (
+      event.icon &&
+      !event.icon.match(/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/)
+    ) {
+      newErrors.icon = 'Debe ser una URL válida de icono (terminada en jpg, jpeg, png, webp o gif).';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -100,7 +112,7 @@ const AddEvent = () => {
     try {
       await addEvent(event);
       alert('Evento creado exitosamente');
-      navigate(`/organizations/${event.organizationCode}/events`); // Redirige a la lista de eventos
+      navigate(`/organizations/${event.organizationCode}/events`);  
     } catch (err) {
       console.error('Error al crear el evento:', err);
       alert('Error al crear el evento: ' + err.message);
@@ -166,6 +178,28 @@ const AddEvent = () => {
             style={{ width: '100%' }}
           />
           {errors.endDate && <p style={{ color: 'red', margin: 0 }}>{errors.endDate}</p>}
+        </label>
+        <br />
+        <label>
+          Imagen (URL):
+          <input
+            type="text"
+            value={event.image}
+            onChange={(e) => handleInputChange('image', e.target.value)}
+            style={{ width: '100%' }}
+          />
+          {errors.image && <p style={{ color: 'red', margin: 0 }}>{errors.image}</p>}
+        </label>
+        <br />
+        <label>
+          Icono (URL):
+          <input
+            type="text"
+            value={event.icon}
+            onChange={(e) => handleInputChange('icon', e.target.value)}
+            style={{ width: '100%' }}
+          />
+          {errors.icon && <p style={{ color: 'red', margin: 0 }}>{errors.icon}</p>}
         </label>
         <br />
         <label>

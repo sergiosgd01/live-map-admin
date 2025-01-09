@@ -1,5 +1,5 @@
 import React from "react";
-import SharedMap from "../components/SharedMap";
+import SharedMap from "../../../components/SharedMap";
 import EditRoute from "./EditRoute";
 import { useParams } from "react-router-dom";
 
