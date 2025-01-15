@@ -4,11 +4,11 @@ import EditService from "./EditService";
 import { useParams } from "react-router-dom";
 
 const EditServicePage = () => {
-  const { id } = useParams();
+  const { eventCode } = useParams();
 
   return (
     <SharedMap>
-      <EditService id={id} />
+      <EditService eventCode={eventCode} />
     </SharedMap>
   );
 };

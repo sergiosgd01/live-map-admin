@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchService, fetchCreateService, fetchDeleteService, fetchDeleteAllServices } from '../../../services/serviceService';
 import { fetchServiceTypes } from '../../../services/serviceTypeService';
 
-const EditService = ({ id }) => {
+const EditService = ({ eventCode }) => {
   const map = useMap();
   const navigate = useNavigate();
   const markersRef = useRef([]);
@@ -28,7 +28,7 @@ const EditService = ({ id }) => {
     }
 
     try {
-      const existingServices = await fetchService(id);
+      const existingServices = await fetchService(eventCode);
       setServices(existingServices);
 
       clearMarkers();
@@ -87,7 +87,7 @@ const EditService = ({ id }) => {
     }
 
     try {
-      await fetchDeleteAllServices(id);
+      await fetchDeleteAllServices(eventCode);
       alert('Todos los servicios han sido eliminados correctamente.');
       loadServices();
     } catch (error) {
@@ -139,7 +139,7 @@ const EditService = ({ id }) => {
 
     try {
       setLoading(true);
-      await fetchCreateService(id, newService.latitude, newService.longitude, selectedType);
+      await fetchCreateService(eventCode, newService.latitude, newService.longitude, selectedType);
       setLoading(false);
       alert('Servicio insertado correctamente.');
       setNewService(null);

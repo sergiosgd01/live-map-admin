@@ -42,9 +42,9 @@ export const fetchEventById = async (id) => {
 };
 
 // Actualizar un evento
-export const updateEvent = async (id, updatedEvent) => {
+export const updateEvent = async (eventCode, updatedEvent) => {
   try {
-    const response = await fetch(`${API_URL}/editEvent/${id}`, {
+    const response = await fetch(`${API_URL}/editEvent/${eventCode}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -63,56 +63,56 @@ export const updateEvent = async (id, updatedEvent) => {
   }
 };
 
-// // Verificar si un evento existe por código
-// export const fetchEventByCode = async (code) => {
-//   try {
-//     const response = await fetch(`${API_URL}/${code}`, {
-//       method: 'GET',
-//       headers: {
-//         'Content-Type': 'application/json',
-//       },
-//     });
-
-//     if (response.status === 404) {
-//       return null; // El código no existe en la base de datos
-//     }
-
-//     if (!response.ok) {
-//       throw new Error('Error al verificar el código del evento');
-//     }
-
-//     return await response.json(); // El código ya existe en la base de datos
-//   } catch (error) {
-//     console.error('Error al verificar el código del evento:', error);
-//     throw error;
-//   }
-// };
-
-export const checkCodeExists = async (id, code) => {
+// Verificar si un evento existe por código
+export const fetchEventByCode = async (eventCode) => {
   try {
-    console.log('id:', id);
-    const url = id
-      ? `${API_URL}/checkCodeExists/${code}?id=${id}`
-      : `${API_URL}/checkCodeExists/${code}`;
-
-    const response = await fetch(url, {
+    const response = await fetch(`${API_URL}/${eventCode}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
-    if (!response.ok) {
-      throw new Error('Error al verificar la existencia del código');
+    if (response.status === 404) {
+      return null; // El código no existe en la base de datos
     }
 
-    const data = await response.json();
-    return data.exists;
+    if (!response.ok) {
+      throw new Error('Error al verificar el código del evento');
+    }
+
+    return await response.json(); // El código ya existe en la base de datos
   } catch (error) {
-    console.error('Error al verificar la existencia del código:', error);
+    console.error('Error al verificar el código del evento:', error);
     throw error;
   }
 };
+
+// export const checkCodeExists = async (id, code) => {
+//   try {
+//     console.log('id:', id);
+//     const url = id
+//       ? `${API_URL}/checkCodeExists/${code}?id=${id}`
+//       : `${API_URL}/checkCodeExists/${code}`;
+
+//     const response = await fetch(url, {
+//       method: 'GET',
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//     });
+
+//     if (!response.ok) {
+//       throw new Error('Error al verificar la existencia del código');
+//     }
+
+//     const data = await response.json();
+//     return data.exists;
+//   } catch (error) {
+//     console.error('Error al verificar la existencia del código:', error);
+//     throw error;
+//   }
+// };
 
 // Crear un nuevo evento
 export const addEvent = async (event) => {
@@ -136,9 +136,9 @@ export const addEvent = async (event) => {
   }
 };
 
-export const deleteEvent = async (id) => {
+export const deleteEvent = async (eventCode) => {
   try {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await fetch(`${API_URL}/${eventCode}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -156,9 +156,9 @@ export const deleteEvent = async (id) => {
   }
 };
 
-export const changeEventStatus = async (id, action, cancelledInfo = '') => {
+export const changeEventStatus = async (eventCode, action, cancelledInfo = '') => {
   try {
-    const response = await fetch(`${API_URL}/cancel/${id}`, {
+    const response = await fetch(`${API_URL}/cancel/${eventCode}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

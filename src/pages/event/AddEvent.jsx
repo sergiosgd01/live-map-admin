@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { DateTime } from 'luxon';
 import { addEvent } from '../../services/eventService';
-import { fetchOrganizations, fetchOrganizationByCode } from '../../services/organizationService';
+import { fetchOrganizations } from '../../services/organizationService';
 
 const AddEvent = () => {
   const { organizationCode } = useParams(); 
@@ -19,20 +20,13 @@ const AddEvent = () => {
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState({});
-  const [defaultOrganizationName, setDefaultOrganizationName] = useState('');
 
   useEffect(() => {
-    console.log('organizationCode:', organizationCode);
     const loadOrganizations = async () => {
       try {
         const orgs = await fetchOrganizations();
         setOrganizations(orgs);
 
-        if (organizationCode) {
-          const defaultOrg = await fetchOrganizationByCode(organizationCode);
-          console.log('defaultOrg:', defaultOrg);
-          setDefaultOrganizationName(defaultOrg?.name || '');
-        }
       } catch (err) {
         console.error('Error al cargar las organizaciones:', err);
       } finally {
@@ -110,9 +104,18 @@ const AddEvent = () => {
     }
 
     try {
-      await addEvent(event);
+      const startDate = DateTime.fromISO(event.startDate).setZone('Europe/Madrid').toISO();
+      const endDate = DateTime.fromISO(event.endDate).setZone('Europe/Madrid').toISO();
+
+      const adjustedEvent = {
+        ...event,
+        startDate,
+        endDate,
+      };
+
+      await addEvent(adjustedEvent);
       alert('Evento creado exitosamente');
-      navigate(`/organizations/${event.organizationCode}/events`);  
+      navigate(`/events/${event.code}`);  
     } catch (err) {
       console.error('Error al crear el evento:', err);
       alert('Error al crear el evento: ' + err.message);
@@ -163,7 +166,7 @@ const AddEvent = () => {
           <input
             type="datetime-local"
             value={event.startDate}
-            onChange={(e) => handleInputChange('startDate', e.target.value + ':00')}
+            onChange={(e) => handleInputChange('startDate', e.target.value)}
             style={{ width: '100%' }}
           />
           {errors.startDate && <p style={{ color: 'red', margin: 0 }}>{errors.startDate}</p>}
@@ -174,7 +177,7 @@ const AddEvent = () => {
           <input
             type="datetime-local"
             value={event.endDate}
-            onChange={(e) => handleInputChange('endDate', e.target.value + ':00')}
+            onChange={(e) => handleInputChange('endDate', e.target.value)}
             style={{ width: '100%' }}
           />
           {errors.endDate && <p style={{ color: 'red', margin: 0 }}>{errors.endDate}</p>}

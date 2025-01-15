@@ -38,7 +38,6 @@ export const fetchCreateRouteMarker = async (code, latitude, longitude) => {
 };
  
 export const fetchDeleteRouteMarker = async (id) => {
-  console.log('Deleting route marker:', id);
   try {
     const response = await fetch(`${API_URL}/${id}`, {
       method: 'DELETE',
@@ -51,7 +50,6 @@ export const fetchDeleteRouteMarker = async (id) => {
       throw new Error('Error al eliminar el marcador');
     }
 
-    console.log('Punto eliminado correctamente');
   } catch (error) {
     console.error('Error al eliminar el marcador:', error);
   }
@@ -68,7 +66,6 @@ export const fetchDeleteAllRoutes = async (code) => {
       throw new Error('Error al eliminar todas las rutas del evento');
     }
 
-    console.log('Todas las rutas han sido eliminadas correctamente.');
   } catch (error) {
     console.error('Error al eliminar todas las rutas:', error);
     throw error;

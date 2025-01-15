@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchEventsByOrganization, deleteEvent } from '../../services/eventService';
+import { fetchEventsByOrganization } from '../../services/eventService';
 import { fetchOrganizationByCode } from '../../services/organizationService'; 
 
 const Events = () => {
@@ -13,7 +13,6 @@ const Events = () => {
   useEffect(() => {
     const loadOrganizationAndEvents = async () => {
       try {
-        console.log('organizationCode:', organizationCode);
         const organization = await fetchOrganizationByCode(organizationCode);
         setOrganizationName(organization.name); 
 
@@ -29,32 +28,8 @@ const Events = () => {
     loadOrganizationAndEvents();
   }, [organizationCode]);
 
-  const handleDelete = async (id) => {
-    if (window.confirm('¿Estás seguro de que deseas eliminar este evento?')) {
-      try {
-        await deleteEvent(id);
-        alert('Evento eliminado exitosamente');
-        setEvents(events.filter((event) => event._id !== id));
-      } catch (err) {
-        console.error('Error al eliminar el evento:', err);
-        alert('Error al eliminar el evento: ' + err.message);
-      }
-    }
-  };
-
   if (loading) return <p>Cargando eventos...</p>;
   if (error) return <p>Error: {error}</p>;
-
-  const buttonStyle = {
-    padding: '10px',
-    border: 'none',
-    borderRadius: '5px',
-    color: 'white',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s ease',
-    width: '200px',
-    textAlign: 'center',
-  };
 
   return (
     <div style={{ padding: '20px' }}>
@@ -65,32 +40,6 @@ const Events = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {events.map((event) => (
             <div key={event._id} style={{ border: '1px solid #ccc', borderRadius: '10px', padding: '20px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
-              {event.status === 1 && (
-                <div
-                  style={{
-                    backgroundColor: 'orange',
-                    color: '#000',
-                    padding: '10px',
-                    borderRadius: '5px',
-                    marginBottom: '10px',
-                  }}
-                >
-                  <h3>Evento Suspendido</h3>
-                </div>
-              )}
-              {event.status === 2 && (
-                <div
-                  style={{
-                    backgroundColor: 'red',
-                    color: '#fff',
-                    padding: '10px',
-                    borderRadius: '5px',
-                    marginBottom: '10px',
-                  }}
-                >
-                  <h3>Evento Finalizado</h3>
-                </div>
-              )}
               <h2>{event.name}</h2>
               <p><strong>Código:</strong> {event.code}</p>
               <p><strong>Fechas:</strong> {new Date(event.startDate).toLocaleString()} - {new Date(event.endDate).toLocaleString()}</p>
@@ -102,31 +51,21 @@ const Events = () => {
                   style={{ width: '200px', height: 'auto', marginBottom: '10px' }}
                 />
               )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <Link to={`/events/${event._id}/edit`}>
-                  <button style={{ ...buttonStyle, backgroundColor: '#007bff' }}>Editar Datos</button>
-                </Link>
-                <Link to={`/events/${event.code}/locations`}>
-                  <button style={{ ...buttonStyle, backgroundColor: '#6c757d' }}>Ver ubicaciones</button>
-                </Link>
-                <Link to={`/events/${event.code}/edit-location`}>
-                  <button style={{ ...buttonStyle, backgroundColor: '#28a745' }}>Editar Ubicaciones</button>
-                </Link>
-                <Link to={`/events/${event.code}/edit-route`}>
-                  <button style={{ ...buttonStyle, backgroundColor: '#ffc107', color: 'black' }}>Editar Ruta</button>
-                </Link>
-                <Link to={`/events/${event.code}/edit-service`}>
-                  <button style={{ ...buttonStyle, backgroundColor: '#17a2b8' }}>Editar Servicios</button>
-                </Link>
-                <button
-                  style={{ ...buttonStyle, backgroundColor: '#d9534f' }}
-                  onClick={() => handleDelete(event._id)}
-                  onMouseOver={(e) => e.target.style.backgroundColor = '#c9302c'}
-                  onMouseOut={(e) => e.target.style.backgroundColor = '#d9534f'}
-                >
-                  Eliminar Evento
+              <Link to={`/events/${event.code}`}>
+                <button style={{
+                  padding: '10px',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.3s ease',
+                  width: '200px',
+                  textAlign: 'center',
+                }}>
+                  Ver Detalles
                 </button>
-              </div>
+              </Link>
             </div>
           ))}
         </div>

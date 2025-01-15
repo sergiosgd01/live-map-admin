@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchEventById, updateEvent, checkCodeExists, changeEventStatus } from '../../services/eventService';
+import { DateTime } from 'luxon';
+import { fetchEventByCode, updateEvent, changeEventStatus } from '../../services/eventService';
 import { fetchOrganizations } from '../../services/organizationService';
 
 const EditEvent = () => {
-  const { id } = useParams();
+  const { eventCode } = useParams();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [organizations, setOrganizations] = useState([]);
@@ -17,7 +18,7 @@ const EditEvent = () => {
   useEffect(() => {
     const loadEventAndOrganizations = async () => {
       try {
-        const data = await fetchEventById(id);
+        const data = await fetchEventByCode(eventCode);
         setEvent(data);
 
         const orgs = await fetchOrganizations();
@@ -30,7 +31,7 @@ const EditEvent = () => {
     };
 
     loadEventAndOrganizations();
-  }, [id]);
+  }, [eventCode]);
 
   const handleInputChange = (field, value) => {
     setEvent({ ...event, [field]: value });
@@ -45,21 +46,21 @@ const EditEvent = () => {
       newErrors.name = 'El nombre no puede estar vacío';
     }
 
-    if (!event.code || isNaN(Number(event.code))) {
-      newErrors.code = 'El código no puede estar vacío y debe ser un número';
-    } else if (event.code.toString().length > 5) {
-      newErrors.code = 'El código no puede tener más de 5 caracteres';
-    } else {
-      try {
-        const codeExists = await checkCodeExists(event._id, event.code);
-        if (codeExists) {
-          newErrors.code = 'El código ya existe en la base de datos';
-        }
-      } catch (err) {
-        console.error('Error al verificar el código:', err);
-        newErrors.code = 'Error al verificar el código, inténtelo nuevamente';
-      }
-    }
+    // if (!event.code || isNaN(Number(event.code))) {
+    //   newErrors.code = 'El código no puede estar vacío y debe ser un número';
+    // } else if (event.code.toString().length > 5) {
+    //   newErrors.code = 'El código no puede tener más de 5 caracteres';
+    // } else {
+    //   try {
+    //     const codeExists = await checkCodeExists(event._id, event.code);
+    //     if (codeExists) {
+    //       newErrors.code = 'El código ya existe en la base de datos';
+    //     }
+    //   } catch (err) {
+    //     console.error('Error al verificar el código:', err);
+    //     newErrors.code = 'Error al verificar el código, inténtelo nuevamente';
+    //   }
+    // }
 
     if (!event.postalCode || event.postalCode.trim() === '') {
       newErrors.postalCode = 'El código postal no puede estar vacío';
@@ -67,6 +68,22 @@ const EditEvent = () => {
 
     if (!event.time || isNaN(event.time)) {
       newErrors.time = 'El tiempo de actualización debe ser un número';
+    }
+
+    if (!event.startDate) {
+      newErrors.startDate = 'La fecha de inicio es obligatoria';
+    }
+
+    if (!event.endDate) {
+      newErrors.endDate = 'La fecha de fin es obligatoria';
+    }
+
+    if (event.startDate && event.endDate) {
+      const start = new Date(event.startDate);
+      const end = new Date(event.endDate);
+      if (start > end) {
+        newErrors.endDate = 'La fecha de fin debe ser posterior a la fecha de inicio';
+      }
     }
 
     if (!event.organizationCode || event.organizationCode === '') {
@@ -100,11 +117,20 @@ const EditEvent = () => {
     }
 
     try {
-      await updateEvent(id, event);
+      const startDate = DateTime.fromISO(event.startDate).setZone('Europe/Madrid').toISO();
+      const endDate = DateTime.fromISO(event.endDate).setZone('Europe/Madrid').toISO();
+
+      const adjustedEvent = {
+        ...event,
+        startDate,
+        endDate,
+      };
+
+      await updateEvent(eventCode, adjustedEvent);
       alert('Evento actualizado exitosamente');
-      const updatedEvent = await fetchEventById(id);
+      const updatedEvent = await fetchEventByCode(eventCode);
       setEvent(updatedEvent);
-      navigate(`/organizations/${event.organizationCode}/events`);
+      navigate(`/events/${event.code}`);
     } catch (err) {
       console.error('Error al actualizar el evento:', err);
       alert('Error al actualizar el evento: ' + err.message);
@@ -114,9 +140,9 @@ const EditEvent = () => {
   const handleResumeEvent = async () => {
     try {
       if (window.confirm('¿Estás seguro de que deseas reanudar el evento?')) {
-        await changeEventStatus(id, 0); 
+        await changeEventStatus(eventCode, 0); 
         alert('Evento reanudado exitosamente');
-        const updatedEvent = await fetchEventById(id);
+        const updatedEvent = await fetchEventByCode(eventCode);
         setEvent(updatedEvent);
       }
     } catch (err) {
@@ -128,10 +154,10 @@ const EditEvent = () => {
   const handleSuspendEvent = async () => {
     try {
       if (window.confirm('¿Estás seguro de que deseas suspender el evento?')) {
-        await changeEventStatus(id, 1, cancelInfo); 
+        await changeEventStatus(eventCode, 1, cancelInfo); 
         alert('Evento suspendido exitosamente');
         setShowModal(false);
-        const updatedEvent = await fetchEventById(id);
+        const updatedEvent = await fetchEventByCode(eventCode);
         setEvent(updatedEvent);
       }
     } catch (err) {
@@ -143,9 +169,9 @@ const EditEvent = () => {
   const handleFinishEvent = async () => {
     try {
       if (window.confirm('¿Estás seguro de que deseas finalizar el evento?')) {
-        await changeEventStatus(id, 2);
+        await changeEventStatus(eventCode, 2);
         alert('Evento finalizado exitosamente');
-        const updatedEvent = await fetchEventById(id);
+        const updatedEvent = await fetchEventByCode(eventCode);
         setEvent(updatedEvent);
       }
     } catch (err) {
@@ -204,7 +230,7 @@ const EditEvent = () => {
           {errors.name && <p style={{ color: 'red', margin: 0 }}>{errors.name}</p>}
         </label>
         <br />
-        <label>
+        {/* <label>
           Código:
           <input
             type="text"
@@ -214,7 +240,7 @@ const EditEvent = () => {
           />
           {errors.code && <p style={{ color: 'red', margin: 0 }}>{errors.code}</p>}
         </label>
-        <br />
+        <br /> */}
         <label>
           Código Postal:
           <input
@@ -242,9 +268,10 @@ const EditEvent = () => {
           <input
             type="datetime-local"
             value={event.startDate ? event.startDate.replace('Z', '') : ''}
-            onChange={(e) => handleInputChange('startDate', e.target.value + ':00')}
+            onChange={(e) => handleInputChange('startDate', e.target.value)}
             style={{ width: '100%' }}
           />
+          {errors.startDate && <p style={{ color: 'red', margin: 0 }}>{errors.startDate}</p>}
         </label>
         <br />
         <label>
@@ -252,9 +279,10 @@ const EditEvent = () => {
           <input
             type="datetime-local"
             value={event.endDate ? event.endDate.replace('Z', '') : ''}
-            onChange={(e) => handleInputChange('endDate', e.target.value + ':00')}
+            onChange={(e) => handleInputChange('endDate', e.target.value)}
             style={{ width: '100%' }}
           />
+          {errors.endDate && <p style={{ color: 'red', margin: 0 }}>{errors.endDate}</p>}
         </label>
         <br />
         <label>

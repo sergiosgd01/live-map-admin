@@ -4,11 +4,11 @@ import EditRoute from "./EditRoute";
 import { useParams } from "react-router-dom";
 
 const EditRoutePage = () => {
-  const { id } = useParams();
+  const { eventCode } = useParams();
 
   return (
     <SharedMap>
-      <EditRoute id={id} />
+      <EditRoute eventCode={eventCode} />
     </SharedMap>
   );
 };

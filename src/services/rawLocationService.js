@@ -5,9 +5,15 @@ export const fetchEventRawLocations = async (eventCode) => {
   try {
     const response = await fetch(`${API_URL}/${eventCode}`);
     if (!response.ok) {
+      if (response.status === 404) {
+        // Si el servidor devuelve un 404, asumimos que no hay ubicaciones para este evento
+        console.warn('No hay ubicaciones para este evento.');
+        return []; // Devuelve un array vacío
+      }
       throw new Error('Error al obtener las ubicaciones del evento');
     }
-    return await response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data : []; // Aseguramos que siempre se retorne un array
   } catch (error) {
     console.error('Error al obtener ubicaciones:', error);
     throw error;

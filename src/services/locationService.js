@@ -1,9 +1,9 @@
 const API_URL = 'https://api-backend-tfg.onrender.com/api/locations'; 
 
 // Obtener las ubicaciones de un evento
-export const fetchEventLocations = async (eventCode) => {
+export const fetchEventLocations = async (code) => {
   try {
-    const response = await fetch(`${API_URL}/${eventCode}`);
+    const response = await fetch(`${API_URL}/${code}`);
     if (!response.ok) {
       throw new Error('Error al obtener las ubicaciones del evento');
     }
@@ -35,9 +35,9 @@ export const fetchAddLocation = async (location) => {
 };
 
 // Eliminar una ubicación existente
-export const fetchDeleteLocation = async (locationId) => {
+export const fetchDeleteLocation = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/${locationId}`, {
+    const response = await fetch(`${API_URL}/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) {

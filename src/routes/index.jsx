@@ -11,6 +11,7 @@ import EditOrganization from "../pages/organization/EditOrganization";
 import AddOrganization from "../pages/organization/AddOrganization";
 
 import Events from "../pages/event/Events";
+import EventDetails from "../pages/event/EventDetails";
 import EditEvent from "../pages/event/EditEvent";
 import AddEvent from "../pages/event/AddEvent";
 import EditRoutePage from "../pages/event/route/EditRoutePage";
@@ -34,12 +35,14 @@ const AppRoutes = () => (
         <Route path="/organizations/add" element={<AddOrganization />} />
 
         <Route path="/organizations/:organizationCode/events" element={<Events />} />
-        <Route path="/events/:id/edit" element={<EditEvent />} />
+        <Route path="/events/:eventCode" element={<EventDetails />} />
+
+        <Route path="/events/:eventCode/edit" element={<EditEvent />} />
         <Route path="/organizations/:organizationCode/add-event" element={<AddEvent />} />
-        <Route path="/events/:id/locations" element={<GetLocations />} />
-        <Route path="/events/:id/edit-route" element={<EditRoutePage />} />
-        <Route path="/events/:id/edit-location" element={<EditLocationPage />} />
-        <Route path="/events/:id/edit-service" element={<EditServicePage />} />
+        <Route path="/events/:eventCode/locations" element={<GetLocations />} />
+        <Route path="/events/:eventCode/edit-route" element={<EditRoutePage />} />
+        <Route path="/events/:eventCode/edit-location" element={<EditLocationPage />} />
+        <Route path="/events/:eventCode/edit-service" element={<EditServicePage />} />
         <Route path="/services" element={<ServiceTypeList />} /> 
         <Route path="/services/add-type" element={<AddServiceType />} />
       </Routes>

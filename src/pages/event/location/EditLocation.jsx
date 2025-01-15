@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { DateTime } from 'luxon';
 import { useMap } from '../../../components/SharedMap';
 import { fetchEventLocations, fetchAddLocation, fetchDeleteLocation, fetchDeleteAllLocations } from '../../../services/locationService';
 
-const EditLocation = ({ id }) => {
+const EditLocation = ({ eventCode }) => {
   const map = useMap();
   const markersRef = useRef([]);
   const polylineRef = useRef(null);
@@ -27,7 +28,7 @@ const EditLocation = ({ id }) => {
   };
 
   const loadLocationMarkers = useCallback(async () => {
-    if (!map || !id) return;
+    if (!map || !eventCode) return;
 
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
@@ -36,7 +37,7 @@ const EditLocation = ({ id }) => {
       polylineRef.current = null;
     }
 
-    const markers = await fetchEventLocations(id);
+    const markers = await fetchEventLocations(eventCode);
 
     const path = markers.map((marker, index) => {
       const position = { lat: marker.latitude, lng: marker.longitude };
@@ -77,7 +78,7 @@ const EditLocation = ({ id }) => {
       } else if (mode === '') {
         newMarker.addListener('click', () => {
           setSelectedPoint({
-            id: marker._id,
+            eventCode: marker.code,
             latitude: marker.latitude,
             longitude: marker.longitude,
             accuracy: marker.accuracy,
@@ -98,7 +99,7 @@ const EditLocation = ({ id }) => {
     }
 
     redrawPolyline(markers);
-  }, [map, id, isMapCentered, mode]);
+  }, [map, eventCode, isMapCentered, mode]);
 
   const redrawPolyline = (markers) => {
     if (polylineRef.current) {
@@ -160,7 +161,7 @@ const EditLocation = ({ id }) => {
         window.google.maps.event.clearListeners(map, 'click');
       };
     }
-  }, [map, id, loadLocationMarkers, mode]);
+  }, [map, eventCode, loadLocationMarkers, mode]);
 
   const handleInsertPoints = async () => {
     if (newPoints.length === 0) {
@@ -169,8 +170,24 @@ const EditLocation = ({ id }) => {
     }
     try {
       for (const point of newPoints) {
-        const locationData = { latitude: point.latitude, longitude: point.longitude, code: id };
-        await fetchAddLocation(locationData);
+
+        // Obtén la fecha ajustada a la zona horaria
+        const timestamp = DateTime.now().setZone("Europe/Madrid").toISO();
+
+        // Convierte la fecha ISO a un objeto Date
+        const adjustedTimestamp = new Date(timestamp);
+
+        console.log('timestamp', timestamp); // Fecha en formato ISO ajustada
+        console.log('adjustedTimestamp', adjustedTimestamp); // Objeto Date válido
+        
+        const locationData = { 
+          latitude: point.latitude, 
+          longitude: point.longitude, 
+          code: eventCode, 
+          timestamp: adjustedTimestamp,
+        };
+        console.log(locationData.timestamp);
+        await fetchAddLocation(locationData);        
       }
       clearTemporaryMarkersAndLines();
       alert('Puntos insertados correctamente');
@@ -188,6 +205,7 @@ const EditLocation = ({ id }) => {
     }
     try {
       for (const markerId of selectedMarkers) {
+        console.log('Eliminando marcador:', markerId);
         await fetchDeleteLocation(markerId);
       }
       setSelectedMarkers([]);
@@ -202,7 +220,7 @@ const EditLocation = ({ id }) => {
   const handleDeleteAllLocations = async () => {
     try {
       if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
-        await fetchDeleteAllLocations(id);
+        await fetchDeleteAllLocations(eventCode);
         alert('Todas las ubicaciones se han eliminado correctamente.');
         await loadLocationMarkers();
       }

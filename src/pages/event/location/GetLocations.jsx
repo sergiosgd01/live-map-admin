@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { fetchEventRawLocations, deleteAllEventRawLocations } from '../../../services/rawLocationService';
 
 const GetLocations = () => {
-  const { id } = useParams(); 
+  const { eventCode } = useParams(); 
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -11,7 +11,7 @@ const GetLocations = () => {
     const loadLocations = async () => {
       try {
         setLoading(true);
-        const locationsData = await fetchEventRawLocations(id);
+        const locationsData = await fetchEventRawLocations(eventCode);
 
         const sortedLocations = locationsData.sort(
           (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
@@ -26,13 +26,13 @@ const GetLocations = () => {
       }
     };
 
-    if (id) {
+    if (eventCode) {
       loadLocations();
       const interval = setInterval(loadLocations, 20000);
 
       return () => clearInterval(interval);
     }
-  }, [id]);
+  }, [eventCode]);
 
   const getRowStyle = (errorCode) => {
     switch (errorCode) {
@@ -64,7 +64,7 @@ const GetLocations = () => {
   const handleDeleteAllLocations = async () => {
     try {
       if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
-        await deleteAllEventRawLocations(id);
+        await deleteAllEventRawLocations(eventCode);
         setLocations([]); 
         alert('Todas las ubicaciones han sido eliminadas correctamente.');
       }

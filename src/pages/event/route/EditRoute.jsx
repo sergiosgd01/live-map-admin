@@ -7,7 +7,7 @@ import {
   fetchDeleteAllRoutes,
 } from '../../../services/routeService';
 
-const EditRoute = ({ id }) => {
+const EditRoute = ({ eventCode }) => {
   const map = useMap();
   const markersRef = useRef([]);
   const polylineRef = useRef(null);
@@ -33,7 +33,7 @@ const EditRoute = ({ id }) => {
   };
 
   const loadRouteMarkers = useCallback(async () => {
-    if (!map || !id) return;
+    if (!map || !eventCode) return;
 
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
@@ -42,7 +42,7 @@ const EditRoute = ({ id }) => {
       polylineRef.current = null;
     }
 
-    const markers = await fetchRouteMarkers(id);
+    const markers = await fetchRouteMarkers(eventCode);
 
     const path = markers.map((marker, index) => {
       const position = { lat: marker.latitude, lng: marker.longitude };
@@ -102,7 +102,7 @@ const EditRoute = ({ id }) => {
     }
 
     redrawPolyline(markers);
-  }, [map, id, isMapCentered, mode]);
+  }, [map, eventCode, isMapCentered, mode]);
 
   const redrawPolyline = (markers) => {
     if (polylineRef.current) {
@@ -128,7 +128,7 @@ const EditRoute = ({ id }) => {
   const handleDeleteAllRoutes = async () => {
     try {
       if (window.confirm('¿Estás seguro de que deseas eliminar todas las rutas de este evento?')) {
-        await fetchDeleteAllRoutes(id);
+        await fetchDeleteAllRoutes(eventCode);
         clearTemporaryMarkersAndLines();
         loadRouteMarkers();
         alert('Todas las rutas han sido eliminadas correctamente.');
@@ -178,7 +178,7 @@ const EditRoute = ({ id }) => {
         window.google.maps.event.clearListeners(map, 'click');
       };
     }
-  }, [map, id, loadRouteMarkers, mode]);
+  }, [map, eventCode, loadRouteMarkers, mode]);
 
   const handleInsertPoints = async () => {
     if (newPoints.length === 0) {
@@ -187,7 +187,7 @@ const EditRoute = ({ id }) => {
     }
     try {
       for (const point of newPoints) {
-        await fetchCreateRouteMarker(id, point.latitude, point.longitude);
+        await fetchCreateRouteMarker(eventCode, point.latitude, point.longitude);
       }
       clearTemporaryMarkersAndLines();
       alert('Puntos insertados correctamente');
@@ -205,6 +205,7 @@ const EditRoute = ({ id }) => {
     }
     try {
       for (const markerId of selectedMarkers) {
+        console.log('Deleting marker:', markerId);
         await fetchDeleteRouteMarker(markerId);
       }
       setSelectedMarkers([]);

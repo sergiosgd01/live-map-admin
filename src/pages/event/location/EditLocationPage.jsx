@@ -4,11 +4,11 @@ import EditLocation from "./EditLocation";
 import { useParams } from "react-router-dom";
 
 const EditLocationPage = () => {
-  const { id } = useParams();
+  const { eventCode } = useParams();
 
   return (
     <SharedMap>
-      <EditLocation id={id} />
+      <EditLocation eventCode={eventCode} />
     </SharedMap>
   );
 };
