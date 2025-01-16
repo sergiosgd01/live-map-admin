@@ -103,7 +103,7 @@ const GetLocations = () => {
                 <th>Longitude</th>
                 <th>Accuracy</th>
                 <th>Reason</th>
-                <th>ID</th>
+                <th>DeviceID</th>
                 <th>Code</th>
               </tr>
             </thead>
@@ -115,7 +115,7 @@ const GetLocations = () => {
                   <td>{location.longitude}</td>
                   <td>{location.accuracy || 'N/A'}</td>
                   <td>{location.reason || 'No errors'}</td>
-                  <td>{location._id}</td>
+                  <td>{location.deviceID}</td>
                   <td>{location.code || 'N/A'}</td>
                 </tr>
               ))}
