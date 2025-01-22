@@ -70,8 +70,24 @@ const Route = ({ eventCode }) => {
         path,
         geodesic: true,
         strokeColor: deviceColor,
-        strokeOpacity: 1.0,
+        
+        // Para no mezclar la línea sólida con la discontinua, bajamos la opacidad a 0
+        strokeOpacity: 0,
         strokeWeight: 2,
+      
+        // Definimos la "textura" discontinua con icons
+        icons: [
+          {
+            icon: {
+              path: 'M 0, -1 0, 1', // Un pequeño trazo vertical
+              strokeOpacity: 1,
+              strokeWeight: 2,
+              scale: 2,           // Ajusta el grosor de la “raya”
+            },
+            offset: '0',
+            repeat: '10px',       // Ajusta la distancia entre rayas
+          },
+        ],
       });
       devicePolylinesRef.current[deviceID].setMap(map);
 

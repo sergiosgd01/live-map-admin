@@ -124,22 +124,41 @@ const EditRoute = ({ eventCode, deviceID }) => {
     if (polylineRef.current) {
       polylineRef.current.setMap(null);
     }
-
+  
     const path = markers.map((marker) => ({
       lat: marker.latitude,
       lng: marker.longitude,
     }));
-
+  
+    // ¡Aquí viene la configuración para la línea discontinua!
     polylineRef.current = new window.google.maps.Polyline({
       path,
       geodesic: true,
+  
+      // Dejamos el color, pero ponemos strokeOpacity a 0 para que la “línea base” sea invisible
       strokeColor: deviceColor,
-      strokeOpacity: 1.0,
+      strokeOpacity: 0,
       strokeWeight: 4,
+  
+      // Usamos icons para dibujar los “segmentos”
+      icons: [
+        {
+          icon: {
+            // Simplemente un trazo vertical que se repetirá
+            path: 'M 0,-1 0,1', 
+            strokeOpacity: 1,
+            strokeColor: deviceColor,
+            strokeWeight: 2,
+            scale: 2, // Ajusta para hacer más grueso o fino el trazo
+          },
+          offset: '0',
+          repeat: '10px', // Ajusta para cambiar la distancia entre “guiones”
+        },
+      ],
     });
-
+  
     polylineRef.current.setMap(map);
-  };
+  };  
 
   const handleDeleteAllRoutes = async () => {
     try {
