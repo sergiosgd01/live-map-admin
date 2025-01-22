@@ -1,17 +1,16 @@
 import React from "react";
 import SharedMap from "../../../components/SharedMap";
-import EditRoute from "./EditRoute";
+import Location from "./Location";
 import { useParams } from "react-router-dom";
 
-const EditRoutePage = () => {
+const LocationPage = () => {
   const { eventCode } = useParams();
-  const { deviceID } = useParams();
 
   return (
     <SharedMap>
-      <EditRoute eventCode={eventCode} deviceID={deviceID} />
+      <Location eventCode={eventCode} />
     </SharedMap>
   );
 };
 
-export default EditRoutePage;
+export default LocationPage;

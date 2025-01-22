@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { DateTime } from 'luxon';
 import { useMap } from '../../../components/SharedMap';
-import { fetchEventLocations, fetchAddLocation, fetchDeleteLocation, fetchDeleteAllLocations } from '../../../services/locationService';
+import { fetchLocationsByDeviceIdEventCode, fetchAddLocation, fetchDeleteLocation, fetchDeleteLocationsByDeviceAndEvent } from '../../../services/locationService';
+import { fetchDeviceByDeviceIDEventCode } from '../../../services/deviceService';
+import { lightenColor, darkenColor } from '../../../utils/colorUtils';
 
-const EditLocation = ({ eventCode }) => {
+const EditLocation = ({ eventCode, deviceID }) => {
   const map = useMap();
   const markersRef = useRef([]);
   const polylineRef = useRef(null);
@@ -14,6 +16,7 @@ const EditLocation = ({ eventCode }) => {
   const [isMapCentered, setIsMapCentered] = useState(false);
   const [mode, setMode] = useState('');
   const [selectedPoint, setSelectedPoint] = useState(null);
+  const [deviceColor, setDeviceColor] = useState('#0000FF');
 
   const clearTemporaryMarkersAndLines = () => {
     tempMarkersRef.current.forEach((marker) => marker.setMap(null));
@@ -27,6 +30,12 @@ const EditLocation = ({ eventCode }) => {
     }
   };
 
+  const loadDeviceColor = useCallback(async () => {
+    const device = await fetchDeviceByDeviceIDEventCode(deviceID, eventCode);
+    console.log('device:', device);
+    setDeviceColor(device.color || '#0000FF'); 
+  }, [deviceID, eventCode]);
+
   const loadLocationMarkers = useCallback(async () => {
     if (!map || !eventCode) return;
 
@@ -37,10 +46,17 @@ const EditLocation = ({ eventCode }) => {
       polylineRef.current = null;
     }
 
-    const markers = await fetchEventLocations(eventCode);
+    const markers = await fetchLocationsByDeviceIdEventCode(deviceID, eventCode);
 
     const path = markers.map((marker, index) => {
       const position = { lat: marker.latitude, lng: marker.longitude };
+      let fillColor = deviceColor;
+
+      if (index === 0) {
+        fillColor = lightenColor(deviceColor, 30); // Primer punto más claro
+      } else if (index === markers.length - 1) {
+        fillColor = darkenColor(deviceColor, 30); // Último punto más oscuro
+      }
 
       const newMarker = new window.google.maps.Marker({
         position,
@@ -49,7 +65,7 @@ const EditLocation = ({ eventCode }) => {
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
           scale: 8,
-          fillColor: index === 0 ? 'green' : index === markers.length - 1 ? 'blue' : 'red',
+          fillColor: fillColor,
           fillOpacity: 1,
           strokeWeight: 1,
           strokeColor: 'black',
@@ -63,13 +79,13 @@ const EditLocation = ({ eventCode }) => {
             if (isSelected) {
               newMarker.setIcon({
                 ...newMarker.getIcon(),
-                fillColor: index === 0 ? 'green' : index === markers.length - 1 ? 'blue' : 'red',
+                fillColor: fillColor,
               });
               return prev.filter((id) => id !== marker._id);
             } else {
               newMarker.setIcon({
                 ...newMarker.getIcon(),
-                fillColor: 'yellow',
+                fillColor: lightenColor(deviceColor, 30),
               });
               return [...prev, marker._id];
             }
@@ -99,7 +115,7 @@ const EditLocation = ({ eventCode }) => {
     }
 
     redrawPolyline(markers);
-  }, [map, eventCode, isMapCentered, mode]);
+  }, [map, eventCode, deviceID, isMapCentered, mode, deviceColor]);
 
   const redrawPolyline = (markers) => {
     if (polylineRef.current) {
@@ -114,7 +130,7 @@ const EditLocation = ({ eventCode }) => {
     polylineRef.current = new window.google.maps.Polyline({
       path,
       geodesic: true,
-      strokeColor: '#FF0000',
+      strokeColor: deviceColor,
       strokeOpacity: 1.0,
       strokeWeight: 4,
     });
@@ -123,6 +139,7 @@ const EditLocation = ({ eventCode }) => {
   };
 
   useEffect(() => {
+    loadDeviceColor();
     clearTemporaryMarkersAndLines();
     loadLocationMarkers();
 
@@ -138,7 +155,7 @@ const EditLocation = ({ eventCode }) => {
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
             scale: 6,
-            fillColor: 'orange',
+            fillColor: deviceColor,
             fillOpacity: 1,
             strokeWeight: 1,
             strokeColor: 'black',
@@ -161,7 +178,7 @@ const EditLocation = ({ eventCode }) => {
         window.google.maps.event.clearListeners(map, 'click');
       };
     }
-  }, [map, eventCode, loadLocationMarkers, mode]);
+  }, [map, eventCode, deviceID, loadLocationMarkers, mode, deviceColor]);
 
   const handleInsertPoints = async () => {
     if (newPoints.length === 0) {
@@ -183,11 +200,11 @@ const EditLocation = ({ eventCode }) => {
         const locationData = { 
           latitude: point.latitude, 
           longitude: point.longitude, 
-          code: eventCode, 
+          accuracy: 0,
           timestamp: adjustedTimestamp,
         };
         console.log(locationData.timestamp);
-        await fetchAddLocation(locationData);        
+        await fetchAddLocation(locationData, eventCode, deviceID);        
       }
       clearTemporaryMarkersAndLines();
       alert('Puntos insertados correctamente');
@@ -205,7 +222,6 @@ const EditLocation = ({ eventCode }) => {
     }
     try {
       for (const markerId of selectedMarkers) {
-        console.log('Eliminando marcador:', markerId);
         await fetchDeleteLocation(markerId);
       }
       setSelectedMarkers([]);
@@ -220,7 +236,7 @@ const EditLocation = ({ eventCode }) => {
   const handleDeleteAllLocations = async () => {
     try {
       if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
-        await fetchDeleteAllLocations(eventCode);
+        await fetchDeleteLocationsByDeviceAndEvent(eventCode, deviceID);
         alert('Todas las ubicaciones se han eliminado correctamente.');
         await loadLocationMarkers();
       }

@@ -95,17 +95,20 @@ const EventDetails = () => {
           <Link to={`/events/${event.code}/edit`}>
             <button style={{ ...buttonStyle, backgroundColor: '#007bff' }}>Editar Datos</button>
           </Link>
-          <Link to={`/events/${event.code}/locations`}>
+          <Link to={`/events/${event.code}/raw-locations`}>
             <button style={{ ...buttonStyle, backgroundColor: '#6c757d' }}>Ver ubicaciones</button>
           </Link>
-          <Link to={`/events/${event.code}/edit-location`}>
+          <Link to={`/events/${event.code}/location`}>
             <button style={{ ...buttonStyle, backgroundColor: '#28a745' }}>Editar Ubicaciones</button>
           </Link>
-          <Link to={`/events/${event.code}/edit-route`}>
+          <Link to={`/events/${event.code}/route`}>
             <button style={{ ...buttonStyle, backgroundColor: '#ffc107', color: 'black' }}>Editar Ruta</button>
           </Link>
           <Link to={`/events/${event.code}/edit-service`}>
             <button style={{ ...buttonStyle, backgroundColor: '#17a2b8' }}>Editar Servicios</button>
+          </Link>
+          <Link to={`/events/${event.code}/devices`}>
+            <button style={{ ...buttonStyle, backgroundColor: '#343a40' }}>Ver Dispositivos</button>
           </Link>
           <button
             style={{ ...buttonStyle, backgroundColor: '#d9534f' }}

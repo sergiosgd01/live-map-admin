@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMap } from '../../../components/SharedMap';
 import {
-  fetchRouteMarkers,
+  fetchRouteByEventCodeDeviceID,
   fetchDeleteRouteMarker,
   fetchCreateRouteMarker,
   fetchDeleteAllRoutes,
 } from '../../../services/routeService';
+import { fetchDeviceByDeviceIDEventCode } from '../../../services/deviceService';
+import { lightenColor, darkenColor } from '../../../utils/colorUtils';
 
-const EditRoute = ({ eventCode }) => {
+const EditRoute = ({ eventCode, deviceID }) => {
   const map = useMap();
   const markersRef = useRef([]);
   const polylineRef = useRef(null);
@@ -18,6 +20,7 @@ const EditRoute = ({ eventCode }) => {
   const [isMapCentered, setIsMapCentered] = useState(false);
   const [mode, setMode] = useState('');
   const [selectedPoint, setSelectedPoint] = useState(null); 
+  const [deviceColor, setDeviceColor] = useState('#FF0000');
 
   const clearTemporaryMarkersAndLines = () => {
     tempMarkersRef.current.forEach((marker) => marker.setMap(null));
@@ -32,6 +35,12 @@ const EditRoute = ({ eventCode }) => {
     }
   };
 
+  const loadDeviceColor = useCallback(async () => {
+    const device = await fetchDeviceByDeviceIDEventCode(deviceID, eventCode);
+    console.log('device:', device);
+    setDeviceColor(device.color || '#FF0000'); 
+  }, [deviceID, eventCode]);
+
   const loadRouteMarkers = useCallback(async () => {
     if (!map || !eventCode) return;
 
@@ -42,10 +51,17 @@ const EditRoute = ({ eventCode }) => {
       polylineRef.current = null;
     }
 
-    const markers = await fetchRouteMarkers(eventCode);
+    const markers = await fetchRouteByEventCodeDeviceID(eventCode, deviceID);
 
     const path = markers.map((marker, index) => {
       const position = { lat: marker.latitude, lng: marker.longitude };
+      let fillColor = deviceColor;
+
+      if (index === 0) {
+        fillColor = lightenColor(deviceColor, 30); // Primer punto más claro
+      } else if (index === markers.length - 1) {
+        fillColor = darkenColor(deviceColor, 30); // Último punto más oscuro
+      }
 
       const newMarker = new window.google.maps.Marker({
         position,
@@ -54,7 +70,7 @@ const EditRoute = ({ eventCode }) => {
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
           scale: 8,
-          fillColor: index === 0 ? 'green' : index === markers.length - 1 ? 'blue' : 'red',
+          fillColor: fillColor,
           fillOpacity: 1,
           strokeWeight: 1,
           strokeColor: 'black',
@@ -68,13 +84,13 @@ const EditRoute = ({ eventCode }) => {
             if (isSelected) {
               newMarker.setIcon({
                 ...newMarker.getIcon(),
-                fillColor: index === 0 ? 'green' : index === markers.length - 1 ? 'blue' : 'red',
+                fillColor: fillColor,
               });
               return prev.filter((id) => id !== marker._id);
             } else {
               newMarker.setIcon({
                 ...newMarker.getIcon(),
-                fillColor: 'yellow',
+                fillColor: lightenColor(deviceColor, 30),
               });
               return [...prev, marker._id];
             }
@@ -102,7 +118,7 @@ const EditRoute = ({ eventCode }) => {
     }
 
     redrawPolyline(markers);
-  }, [map, eventCode, isMapCentered, mode]);
+  }, [map, eventCode, deviceID, isMapCentered, mode, deviceColor]);
 
   const redrawPolyline = (markers) => {
     if (polylineRef.current) {
@@ -117,7 +133,7 @@ const EditRoute = ({ eventCode }) => {
     polylineRef.current = new window.google.maps.Polyline({
       path,
       geodesic: true,
-      strokeColor: '#FF0000',
+      strokeColor: deviceColor,
       strokeOpacity: 1.0,
       strokeWeight: 4,
     });
@@ -128,7 +144,7 @@ const EditRoute = ({ eventCode }) => {
   const handleDeleteAllRoutes = async () => {
     try {
       if (window.confirm('¿Estás seguro de que deseas eliminar todas las rutas de este evento?')) {
-        await fetchDeleteAllRoutes(eventCode);
+        await fetchDeleteAllRoutes(eventCode, deviceID);
         clearTemporaryMarkersAndLines();
         loadRouteMarkers();
         alert('Todas las rutas han sido eliminadas correctamente.');
@@ -140,6 +156,7 @@ const EditRoute = ({ eventCode }) => {
   };
 
   useEffect(() => {
+    loadDeviceColor();
     clearTemporaryMarkersAndLines();
     loadRouteMarkers();
 
@@ -155,7 +172,7 @@ const EditRoute = ({ eventCode }) => {
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
             scale: 6,
-            fillColor: 'orange',
+            fillColor: deviceColor,
             fillOpacity: 1,
             strokeWeight: 1,
             strokeColor: 'black',
@@ -178,7 +195,7 @@ const EditRoute = ({ eventCode }) => {
         window.google.maps.event.clearListeners(map, 'click');
       };
     }
-  }, [map, eventCode, loadRouteMarkers, mode]);
+  }, [map, eventCode, deviceID, loadRouteMarkers, mode, deviceColor]);
 
   const handleInsertPoints = async () => {
     if (newPoints.length === 0) {
@@ -187,7 +204,7 @@ const EditRoute = ({ eventCode }) => {
     }
     try {
       for (const point of newPoints) {
-        await fetchCreateRouteMarker(eventCode, point.latitude, point.longitude);
+        await fetchCreateRouteMarker(eventCode, deviceID, point.latitude, point.longitude);
       }
       clearTemporaryMarkersAndLines();
       alert('Puntos insertados correctamente');

@@ -14,13 +14,34 @@ export const fetchEventLocations = async (code) => {
   }
 };
 
-export const fetchAddLocation = async (location) => {
+export const fetchLocationsByDeviceIdEventCode = async (deviceID, code) => {
   try {
-    console.log(location);
+    const response = await fetch(`${API_URL}/device?deviceID=${deviceID}&code=${code}`);
+    if (!response.ok) {
+      throw new Error('Error al obtener las ubicaciones para el dispositivo');
+    }
+
+    const data = await response.json();
+
+    // Verificar si hay un mensaje de ausencia de datos
+    if (data.message && data.locations?.length === 0) {
+      console.warn(data.message); // Puedes mostrar un mensaje informativo en el frontend
+      return []; // Devuelve un array vacío
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error al obtener las ubicaciones por dispositivo:', error);
+    return [];
+  }
+};
+
+export const fetchAddLocation = async (location, eventCode, deviceID) => {
+  try {
     const response = await fetch(`${API_URL}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ location }),
+      body: JSON.stringify({ location, code: eventCode, deviceID }),
     });
 
     if (!response.ok) {
@@ -50,18 +71,17 @@ export const fetchDeleteLocation = async (id) => {
   }
 };
 
-export const fetchDeleteAllLocations = async (eventCode) => {
+export const fetchDeleteLocationsByDeviceAndEvent = async (eventCode, deviceID) => {
   try {
-    const response = await fetch(`${API_URL}/event/${eventCode}`, {
+    const response = await fetch(`${API_URL}/event/${eventCode}/device/${deviceID}`, {
       method: 'DELETE',
     });
     if (!response.ok) {
-      throw new Error('Error al eliminar todas las ubicaciones');
+      throw new Error('Error al eliminar las ubicaciones para el dispositivo y evento especificados');
     }
     return await response.json();
   } catch (error) {
-    console.error('Error al eliminar todas las ubicaciones:', error);
+    console.error('Error al eliminar las ubicaciones:', error);
     throw error;
   }
 };
-

@@ -1,13 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchEventRawLocations, deleteAllEventRawLocations } from '../../../services/rawLocationService';
+import { fetchDevicesByEventCode } from '../../../services/deviceService';
 
 const GetLocations = () => {
   const { eventCode } = useParams(); 
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [devices, setDevices] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState('ALL'); // Añadir cerca de tus otros useState
 
   useEffect(() => {
+    const loadDevices = async () => {
+      try {
+        // Obtenemos el array completo de dispositivos y lo almacenamos
+        const devicesResponse = await fetchDevicesByEventCode(eventCode);
+        setDevices(devicesResponse);
+      } catch (error) {
+        console.error('Error fetching devices:', error);
+        alert('Failed to load devices. Please try again later.');
+      }
+    };
+
     const loadLocations = async () => {
       try {
         setLoading(true);
@@ -27,6 +41,7 @@ const GetLocations = () => {
     };
 
     if (eventCode) {
+      loadDevices();
       loadLocations();
       const interval = setInterval(loadLocations, 20000);
 
@@ -61,6 +76,17 @@ const GetLocations = () => {
     );
   };
 
+  const getDeviceColor = (deviceID) => {
+    const device = devices.find((d) => d.deviceID === deviceID);
+    return device ? device.color : 'transparent';
+  };
+
+  // Función para obtener el nombre del dispositivo
+  const getDeviceName = (deviceID) => {
+    const device = devices.find((d) => d.deviceID === deviceID);
+    return device ? device.name : deviceID;
+  };
+
   const handleDeleteAllLocations = async () => {
     try {
       if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
@@ -73,6 +99,10 @@ const GetLocations = () => {
       alert('Error al eliminar las ubicaciones. Por favor, inténtalo de nuevo.');
     }
   };
+
+  const filteredLocations = selectedDevice === 'ALL'
+  ? locations
+  : locations.filter((loc) => loc.deviceID === selectedDevice);
 
   return (
     <div>
@@ -90,11 +120,35 @@ const GetLocations = () => {
       >
         Eliminar todas las ubicaciones
       </button>
+
+      {devices.length > 1 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+          }}
+        >
+          <select
+            value={selectedDevice}
+            onChange={(e) => setSelectedDevice(e.target.value)}
+            style={{ marginBottom: '10px' }}
+          >
+            <option value="ALL">All Devices</option>
+            {devices.map((device) => (
+              <option key={device.deviceID} value={device.deviceID}>
+                {device.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {loading ? (
         <p>Loading locations...</p>
-      ) : locations.length > 0 ? (
+      ) : filteredLocations.length > 0 ? (
         <>
-          <p>Total Locations: {locations.length}</p>
+          <p>Total Locations: {filteredLocations.length}</p>
           <table style={{ border: '1px solid black', width: '100%', textAlign: 'left' }}>
             <thead>
               <tr>
@@ -103,30 +157,50 @@ const GetLocations = () => {
                 <th>Longitude</th>
                 <th>Accuracy</th>
                 <th>Reason</th>
-                <th>DeviceID</th>
-                <th>Code</th>
+                <th>Device</th>
+                <th>Device Color</th>
               </tr>
             </thead>
             <tbody>
-              {locations.map((location) => (
+              {filteredLocations.map((location) => (
                 <tr key={location._id} style={getRowStyle(location.errorCode)}>
                   <td>{formatTimestamp(location.timestamp)}</td>
                   <td>{location.latitude}</td>
                   <td>{location.longitude}</td>
                   <td>{location.accuracy || 'N/A'}</td>
                   <td>{location.reason || 'No errors'}</td>
-                  <td>{location.deviceID}</td>
-                  <td>{location.code || 'N/A'}</td>
+                  <td>{getDeviceName(location.deviceID)}</td>
+                  <td>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        height: '100%',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          backgroundColor: getDeviceColor(location.deviceID),
+                        }}
+                      ></div>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </>
       ) : (
-        <p>No locations found for this event.</p>
+        <p>No se han encontrado ubicaciones para este evento.</p>
       )}
     </div>
   );
 };
 
 export default GetLocations;
+
+
