@@ -74,3 +74,21 @@ export const updateDevice = async (deviceID, eventCode, deviceData) => {
     throw error;
   }
 };
+
+export const deleteDeviceById = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al eliminar el dispositivo');
+    }
+
+    const { message } = await response.json();
+    return message;
+  } catch (error) {
+    console.error('Error al eliminar el dispositivo:', error);
+    throw error;
+  }
+};

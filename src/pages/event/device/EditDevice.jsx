@@ -6,7 +6,7 @@ import { SketchPicker } from 'react-color';
 const EditDevice = () => {
   const { deviceId, eventCode } = useParams();
   const navigate = useNavigate();
-  const [device, setDevice] = useState({ color: '#000000' });
+  const [device, setDevice] = useState({ color: '#000000', icon: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -80,6 +80,18 @@ const EditDevice = () => {
         </label>
         <br />
         <label>
+          Icon URL:
+          <input
+            type="text"
+            name="icon"
+            placeholder={device.icon}
+            value={device.icon || ''}
+            onChange={handleChange}
+            style={{ width: '100%' }}
+          />
+        </label>
+        <br />
+        <label>
           Color:
           <SketchPicker
             color={device.color || '#000000'} // Usa un valor por defecto si `device.color` es null o undefined
@@ -91,16 +103,15 @@ const EditDevice = () => {
         <button
           type="submit"
           style={{
-            marginTop: '20px',
             padding: '10px 20px',
-            backgroundColor: 'blue',
+            backgroundColor: '#007bff',
             color: 'white',
             border: 'none',
             borderRadius: '5px',
             cursor: 'pointer',
           }}
         >
-          Guardar Cambios
+          Actualizar Dispositivo
         </button>
       </form>
     </div>

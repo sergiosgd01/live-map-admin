@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchDevicesByEventCode } from '../../../services/deviceService';
+import { fetchDevicesByEventCode, deleteDeviceById } from '../../../services/deviceService';
 
 const Device = () => {
   const { eventCode } = useParams(); 
@@ -15,6 +15,19 @@ const Device = () => {
 
     loadDevices();
   }, [eventCode]);
+
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este dispositivo?')) {
+      try {
+        await deleteDeviceById(id);
+        alert('Dispositivo eliminado correctamente');
+        setDevices(devices.filter(device => device._id !== id));
+      } catch (error) {
+        console.error('Error al eliminar el dispositivo:', error);
+        alert('Error al eliminar el dispositivo');
+      }
+    }
+  };
 
   return (
     <div>
@@ -33,6 +46,12 @@ const Device = () => {
               <Link to={`/devices/${device.deviceID}/${device.eventCode}/edit`}>
                 <button style={{ padding: '5px 10px', borderRadius: '5px', backgroundColor: '#007bff', color: '#fff', border: 'none', cursor: 'pointer' }}>Editar</button>
               </Link>
+              <button
+                onClick={() => handleDelete(device._id)}
+                style={{ padding: '5px 10px', borderRadius: '5px', backgroundColor: '#dc3545', color: '#fff', border: 'none', cursor: 'pointer', marginLeft: '10px' }}
+              >
+                Eliminar
+              </button>
             </li>
           ))}
         </ul>
