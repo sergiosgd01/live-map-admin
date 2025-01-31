@@ -1,3 +1,4 @@
+// src/components/EditRoute.jsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMap } from '../../../components/SharedMap';
 import {
@@ -9,41 +10,66 @@ import {
 import { fetchDeviceByDeviceIDEventCode } from '../../../services/deviceService';
 import { lightenColor, darkenColor } from '../../../utils/colorUtils';
 
+const defaultCenter = { lat: 40.4168, lng: -3.7038 };
+
 const EditRoute = ({ eventCode, deviceID }) => {
   const map = useMap();
+
+  // Refs para controlar los markers/polylines
   const markersRef = useRef([]);
   const polylineRef = useRef(null);
   const tempPolylineRef = useRef(null);
   const tempMarkersRef = useRef([]);
+
+  // Estados
   const [newPoints, setNewPoints] = useState([]);
   const [selectedMarkers, setSelectedMarkers] = useState([]);
-  const [isMapCentered, setIsMapCentered] = useState(false);
   const [mode, setMode] = useState('');
-  const [selectedPoint, setSelectedPoint] = useState(null); 
+  const [selectedPoint, setSelectedPoint] = useState(null);
   const [deviceColor, setDeviceColor] = useState('#FF0000');
 
+  const [firstLoad, setFirstLoad] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  /**
+   * Limpia markers y líneas temporales (para modo insert, etc.)
+   */
   const clearTemporaryMarkersAndLines = () => {
+    // Borra los markers temporales
     tempMarkersRef.current.forEach((marker) => marker.setMap(null));
     tempMarkersRef.current = [];
     setSelectedMarkers([]);
     setNewPoints([]);
     setSelectedPoint(null);
 
+    // Borra la polyline temporal
     if (tempPolylineRef.current) {
       tempPolylineRef.current.setMap(null);
       tempPolylineRef.current = null;
     }
   };
 
+  /**
+   * Carga el color real del dispositivo (o fallback #FF0000).
+   */
   const loadDeviceColor = useCallback(async () => {
-    const device = await fetchDeviceByDeviceIDEventCode(deviceID, eventCode);
-    console.log('device:', device);
-    setDeviceColor(device.color || '#FF0000'); 
+    try {
+      const device = await fetchDeviceByDeviceIDEventCode(deviceID, eventCode);
+      const color = device?.color ? `#${device.color.replace('#', '')}` : '#FF0000';
+      setDeviceColor(color);
+    } catch (err) {
+      console.error('Error al cargar color del dispositivo:', err);
+      setDeviceColor('#FF0000'); // fallback
+    }
   }, [deviceID, eventCode]);
 
-  const loadRouteMarkers = useCallback(async () => {
+  /**
+   * Carga los markers de la ruta y ajusta el mapa a todos los puntos.
+   */
+  const loadRouteMarkers = useCallback(async (shouldCenter = false) => {
     if (!map || !eventCode) return;
 
+    // 1) Limpiar markers previos
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
     if (polylineRef.current) {
@@ -51,52 +77,70 @@ const EditRoute = ({ eventCode, deviceID }) => {
       polylineRef.current = null;
     }
 
-    const markers = await fetchRouteByEventCodeDeviceID(eventCode, deviceID);
+    // 2) Fetch de la ruta
+    const markersData = await fetchRouteByEventCodeDeviceID(eventCode, deviceID);
+    if (!markersData || markersData.length === 0) {
+      console.log('No hay markers => centro por defecto');
+      if (shouldCenter) {
+        map.setCenter(defaultCenter);
+        map.setZoom(6);
+      }
+      return;
+    }
 
-    const path = markers.map((marker, index) => {
+    // 3) Crear markers
+    const pathPositions = markersData.map((marker, index) => {
       const position = { lat: marker.latitude, lng: marker.longitude };
-      let fillColor = deviceColor;
 
+      // Ajustar color en primer y último
+      let fillColor = deviceColor;
       if (index === 0) {
-        fillColor = lightenColor(deviceColor, 30); // Primer punto más claro
-      } else if (index === markers.length - 1) {
-        fillColor = darkenColor(deviceColor, 30); // Último punto más oscuro
+        fillColor = lightenColor(deviceColor, 50);
+      } else if (index === markersData.length - 1) {
+        fillColor = darkenColor(deviceColor, 30);
       }
 
       const newMarker = new window.google.maps.Marker({
         position,
         map,
-        title: index === 0 ? 'Inicio' : index === markers.length - 1 ? 'Fin' : `Punto ${index + 1}`,
+        title:
+          index === 0
+            ? 'Inicio'
+            : index === markersData.length - 1
+            ? 'Fin'
+            : `Punto ${index + 1}`,
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
           scale: 8,
-          fillColor: fillColor,
+          fillColor,
           fillOpacity: 1,
           strokeWeight: 1,
           strokeColor: 'black',
         },
       });
 
+      // Listeners según "mode"
       if (mode === 'delete') {
         newMarker.addListener('click', () => {
+          const markerId = marker._id; 
           setSelectedMarkers((prev) => {
-            const isSelected = prev.includes(marker._id);
+            const isSelected = prev.includes(markerId);
             if (isSelected) {
-              newMarker.setIcon({
-                ...newMarker.getIcon(),
-                fillColor: fillColor,
-              });
-              return prev.filter((id) => id !== marker._id);
+              // Quitar
+              newMarker.setIcon({ ...newMarker.getIcon(), fillColor });
+              return prev.filter((id) => id !== markerId);
             } else {
+              // Añadir
               newMarker.setIcon({
                 ...newMarker.getIcon(),
-                fillColor: lightenColor(deviceColor, 30),
+                fillColor: lightenColor(deviceColor, 50),
               });
-              return [...prev, marker._id];
+              return [...prev, markerId];
             }
           });
         });
       } else if (mode === '') {
+        // Modo visualización => click => setSelectedPoint
         newMarker.addListener('click', () => {
           setSelectedPoint({
             id: marker._id,
@@ -106,155 +150,200 @@ const EditRoute = ({ eventCode, deviceID }) => {
         });
       }
 
+      setLoading(false);
+
       markersRef.current.push(newMarker);
       return position;
     });
 
-    if (!isMapCentered && path.length > 0) {
-      const lastMarkerPosition = path[path.length - 1];
-      map.panTo(lastMarkerPosition);
-      map.setZoom(14);
-      setIsMapCentered(true);
-    }
-
-    redrawPolyline(markers);
-  }, [map, eventCode, deviceID, isMapCentered, mode, deviceColor]);
-
-  const redrawPolyline = (markers) => {
-    if (polylineRef.current) {
-      polylineRef.current.setMap(null);
-    }
-  
-    const path = markers.map((marker) => ({
-      lat: marker.latitude,
-      lng: marker.longitude,
-    }));
-  
-    // ¡Aquí viene la configuración para la línea discontinua!
+    // 4) Crear polyline discontinua
+    const routePath = markersData.map((m) => ({ lat: m.latitude, lng: m.longitude }));
     polylineRef.current = new window.google.maps.Polyline({
-      path,
+      path: routePath,
       geodesic: true,
-  
-      // Dejamos el color, pero ponemos strokeOpacity a 0 para que la “línea base” sea invisible
       strokeColor: deviceColor,
-      strokeOpacity: 0,
+      strokeOpacity: 0, // invisible base
       strokeWeight: 4,
-  
-      // Usamos icons para dibujar los “segmentos”
       icons: [
         {
           icon: {
-            // Simplemente un trazo vertical que se repetirá
-            path: 'M 0,-1 0,1', 
+            path: 'M 0,-1 0,1',
             strokeOpacity: 1,
             strokeColor: deviceColor,
             strokeWeight: 2,
-            scale: 2, // Ajusta para hacer más grueso o fino el trazo
+            scale: 2,
           },
           offset: '0',
-          repeat: '10px', // Ajusta para cambiar la distancia entre “guiones”
+          repeat: '10px',
         },
       ],
     });
-  
     polylineRef.current.setMap(map);
-  };  
 
-  const handleDeleteAllRoutes = async () => {
-    try {
-      if (window.confirm('¿Estás seguro de que deseas eliminar todas las rutas de este evento?')) {
-        await fetchDeleteAllRoutes(eventCode, deviceID);
-        clearTemporaryMarkersAndLines();
-        loadRouteMarkers();
-        alert('Todas las rutas han sido eliminadas correctamente.');
-      }
-    } catch (error) {
-      console.error('Error al eliminar todas las rutas:', error);
-      alert('Error al eliminar las rutas. Por favor, inténtalo de nuevo.');
+    // 5) Ajusta el mapa a todos los markers (bounding)
+    if (shouldCenter) {
+      const bounds = new window.google.maps.LatLngBounds();
+      pathPositions.forEach((pos) => bounds.extend(pos));
+      map.fitBounds(bounds);
+      console.log('Mapa ajustado a bounds:', bounds);
     }
-  };
+  }, [map, eventCode, deviceID, mode, deviceColor]);
 
+  /**
+   * Al montar o cambiar eventCode/deviceID => cargar color y markers
+   */
   useEffect(() => {
-    loadDeviceColor();
-    clearTemporaryMarkersAndLines();
-    loadRouteMarkers();
+    (async () => {
+      setLoading(true);
+      await loadDeviceColor();
+      clearTemporaryMarkersAndLines();
+  
+      // Llamada con firstLoad (true la primera vez), centrará el mapa
+      await loadRouteMarkers(firstLoad);
+  
+      // Ponerlo en false para que en futuros "cambios" no centre automáticamente
+      setFirstLoad(false);
+    })();
+  }, [loadDeviceColor, loadRouteMarkers]);
 
-    if (map && mode === 'insert') {
-      const handleMapClick = (e) => {
-        const { latLng } = e;
-        const newPoint = { latitude: latLng.lat(), longitude: latLng.lng() };
+  /**
+   * Modo "insert": cada click en el mapa crea un marker temporal
+   */
+  useEffect(() => {
+    if (!map) return;
+    if (mode !== 'insert') return;
 
-        const tempMarker = new window.google.maps.Marker({
-          position: { lat: newPoint.latitude, lng: newPoint.longitude },
-          map,
-          title: 'Nuevo Punto',
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 6,
-            fillColor: deviceColor,
-            fillOpacity: 1,
-            strokeWeight: 1,
-            strokeColor: 'black',
-          },
-        });
+    const handleMapClick = (e) => {
+      const { latLng } = e;
+      const newPoint = { latitude: latLng.lat(), longitude: latLng.lng() };
 
-        tempMarker.addListener('click', () => {
-          tempMarker.setMap(null);
-          tempMarkersRef.current = tempMarkersRef.current.filter((marker) => marker !== tempMarker);
-          setNewPoints((prev) => prev.filter((point) => point.latitude !== newPoint.latitude || point.longitude !== newPoint.longitude));
-        });
+      const tempMarker = new window.google.maps.Marker({
+        position: { lat: newPoint.latitude, lng: newPoint.longitude },
+        map,
+        title: 'Nuevo Punto',
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 6,
+          fillColor: deviceColor,
+          fillOpacity: 1,
+          strokeWeight: 1,
+          strokeColor: 'black',
+        },
+      });
 
-        tempMarkersRef.current.push(tempMarker);
-        setNewPoints((prev) => [...prev, newPoint]);
-      };
+      // click => borrar este temporal
+      tempMarker.addListener('click', () => {
+        tempMarker.setMap(null);
+        tempMarkersRef.current = tempMarkersRef.current.filter((m) => m !== tempMarker);
+        setNewPoints((prev) =>
+          prev.filter(
+            (p) => p.latitude !== newPoint.latitude || p.longitude !== newPoint.longitude
+          )
+        );
+      });
 
-      map.addListener('click', handleMapClick);
+      tempMarkersRef.current.push(tempMarker);
+      setNewPoints((prev) => [...prev, newPoint]);
+    };
 
-      return () => {
-        window.google.maps.event.clearListeners(map, 'click');
-      };
-    }
-  }, [map, eventCode, deviceID, loadRouteMarkers, mode, deviceColor]);
+    map.addListener('click', handleMapClick);
+    return () => {
+      window.google.maps.event.clearListeners(map, 'click');
+    };
+  }, [map, mode, deviceColor]);
 
+  /**
+   * Insertar los puntos nuevos
+   */
   const handleInsertPoints = async () => {
     if (newPoints.length === 0) {
-      alert('Debe seleccionar al menos un punto para insertar.');
+      alert('Debes seleccionar al menos un punto para insertar.');
       return;
     }
     try {
+      setLoading(true);
       for (const point of newPoints) {
         await fetchCreateRouteMarker(eventCode, deviceID, point.latitude, point.longitude);
       }
       clearTemporaryMarkersAndLines();
-      alert('Puntos insertados correctamente');
-      await loadRouteMarkers();
+      alert('Puntos insertados correctamente.');
+      await loadRouteMarkers(true); // Re-cargar markers para verlos
     } catch (error) {
       console.error('Error al insertar puntos:', error);
       alert('Error al insertar puntos');
-    }
+    } finally {
+      setLoading(false);
+    } 
   };
 
+  /**
+   * Eliminar markers seleccionados
+   */
   const handleDeleteSelectedPoints = async () => {
     if (selectedMarkers.length === 0) {
-      alert('Debe seleccionar al menos un marcador para eliminar.');
+      alert('Selecciona al menos un marcador para eliminar.');
       return;
     }
     try {
+      setLoading(true);
       for (const markerId of selectedMarkers) {
-        console.log('Deleting marker:', markerId);
         await fetchDeleteRouteMarker(markerId);
       }
       setSelectedMarkers([]);
-      alert('Puntos eliminados correctamente');
-      await loadRouteMarkers();
+      alert('Puntos eliminados correctamente.');
+      await loadRouteMarkers(true); // recarga
     } catch (error) {
       console.error('Error al eliminar puntos:', error);
       alert('Error al eliminar puntos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Elimina TODAS las rutas
+   */
+  const handleDeleteAllRoutes = async () => {
+    try {
+      if (window.confirm('¿Estás seguro de que deseas eliminar todas las rutas?')) {
+        setLoading(true);
+        await fetchDeleteAllRoutes(eventCode, deviceID);
+        clearTemporaryMarkersAndLines();
+        await loadRouteMarkers(true);
+        alert('Todas las rutas han sido eliminadas correctamente.');
+      }
+    } catch (error) {
+      console.error('Error al eliminar rutas:', error);
+      alert('Error al eliminar.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <>
+      {loading && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 9999,
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.5em',
+          }}
+        >
+          Cargando...
+        </div>
+      )}
+  
+      {/* BOTÓN MODO "INSERT" */}
       <button
         onClick={() => setMode((prev) => (prev === 'insert' ? '' : 'insert'))}
         style={{
@@ -272,6 +361,8 @@ const EditRoute = ({ eventCode, deviceID }) => {
       >
         Insertar Puntos
       </button>
+  
+      {/* BOTÓN MODO "DELETE" */}
       <button
         onClick={() => setMode((prev) => (prev === 'delete' ? '' : 'delete'))}
         style={{
@@ -289,6 +380,8 @@ const EditRoute = ({ eventCode, deviceID }) => {
       >
         Eliminar Puntos
       </button>
+  
+      {/* BOTÓN ELIMINAR TODAS LAS RUTAS */}
       <button
         onClick={handleDeleteAllRoutes}
         style={{
@@ -306,6 +399,8 @@ const EditRoute = ({ eventCode, deviceID }) => {
       >
         Eliminar todas las rutas
       </button>
+  
+      {/* BOTÓN CONFIRMAR INSERCIÓN */}
       {mode === 'insert' && (
         <button
           onClick={handleInsertPoints}
@@ -325,6 +420,8 @@ const EditRoute = ({ eventCode, deviceID }) => {
           Confirmar Inserción
         </button>
       )}
+  
+      {/* BOTÓN CONFIRMAR ELIMINACIÓN */}
       {mode === 'delete' && (
         <button
           onClick={handleDeleteSelectedPoints}
@@ -344,6 +441,8 @@ const EditRoute = ({ eventCode, deviceID }) => {
           Confirmar Eliminación
         </button>
       )}
+  
+      {/* PANEL DE INFO DEL PUNTO SELECCIONADO (sólo si mode === '') */}
       {selectedPoint && mode === '' && (
         <div
           style={{
@@ -359,9 +458,15 @@ const EditRoute = ({ eventCode, deviceID }) => {
           }}
         >
           <h4>Información del Punto</h4>
-          <p><strong>ID:</strong> {selectedPoint.id}</p>
-          <p><strong>Latitud:</strong> {selectedPoint.latitude}</p>
-          <p><strong>Longitud:</strong> {selectedPoint.longitude}</p>
+          <p>
+            <strong>ID:</strong> {selectedPoint.id}
+          </p>
+          <p>
+            <strong>Latitud:</strong> {selectedPoint.latitude}
+          </p>
+          <p>
+            <strong>Longitud:</strong> {selectedPoint.longitude}
+          </p>
           <button
             onClick={() => setSelectedPoint(null)}
             style={{
@@ -382,4 +487,4 @@ const EditRoute = ({ eventCode, deviceID }) => {
   );
 };
 
-export default EditRoute;
+  export default EditRoute;

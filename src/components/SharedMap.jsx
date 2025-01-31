@@ -3,9 +3,8 @@ import { GoogleMap } from "@react-google-maps/api";
 
 const mapContainerStyle = {
   width: "100%",
-  height: "100vh", // Ocupa toda la altura de la ventana
+  height: "97vh", 
 };
-
 
 const defaultCenter = {
   lat: 40.4168,

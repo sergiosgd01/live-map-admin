@@ -104,7 +104,7 @@ const EventDetails = () => {
           <Link to={`/events/${event.code}/route`}>
             <button style={{ ...buttonStyle, backgroundColor: '#ffc107', color: 'black' }}>Editar Ruta</button>
           </Link>
-          <Link to={`/events/${event.code}/edit-service`}>
+          <Link to={`/events/${event.code}/service`}>
             <button style={{ ...buttonStyle, backgroundColor: '#17a2b8' }}>Editar Servicios</button>
           </Link>
           <Link to={`/events/${event.code}/devices`}>

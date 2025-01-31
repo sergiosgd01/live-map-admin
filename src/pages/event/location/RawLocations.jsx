@@ -1,63 +1,87 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchEventRawLocations, deleteAllEventRawLocations } from '../../../services/rawLocationService';
+import {
+  fetchEventRawLocations,
+  deleteAllEventRawLocations
+} from '../../../services/rawLocationService';
 import { fetchDevicesByEventCode } from '../../../services/deviceService';
 
 const GetLocations = () => {
-  const { eventCode } = useParams(); 
+  const { eventCode } = useParams();
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [devices, setDevices] = useState([]);
-  const [selectedDevice, setSelectedDevice] = useState('ALL'); // Añadir cerca de tus otros useState
+  const [selectedDevice, setSelectedDevice] = useState('ALL');
 
+  // Estado para controlar si se auto-refresca la lista o no
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // Intervalo de refresco fijo (en segundos)
+  const REFRESH_INTERVAL = 20;
+
+  // Función para cargar dispositivos
+  const loadDevices = async () => {
+    try {
+      const devicesResponse = await fetchDevicesByEventCode(eventCode);
+      setDevices(devicesResponse);
+    } catch (error) {
+      console.error('Error fetching devices:', error);
+      alert('Failed to load devices. Please try again later.');
+    }
+  };
+
+  // Función para cargar ubicaciones
+  const loadLocations = async () => {
+    try {
+      setLoading(true);
+      const locationsData = await fetchEventRawLocations(eventCode);
+
+      const sortedLocations = locationsData.sort(
+        (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+      );
+
+      setLocations(sortedLocations);
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      alert('Failed to load locations. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // useEffect para cargar datos iniciales cuando cambia eventCode
   useEffect(() => {
-    const loadDevices = async () => {
-      try {
-        // Obtenemos el array completo de dispositivos y lo almacenamos
-        const devicesResponse = await fetchDevicesByEventCode(eventCode);
-        setDevices(devicesResponse);
-      } catch (error) {
-        console.error('Error fetching devices:', error);
-        alert('Failed to load devices. Please try again later.');
-      }
-    };
-
-    const loadLocations = async () => {
-      try {
-        setLoading(true);
-        const locationsData = await fetchEventRawLocations(eventCode);
-
-        const sortedLocations = locationsData.sort(
-          (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
-        );
-
-        setLocations(sortedLocations);
-      } catch (error) {
-        console.error('Error fetching locations:', error);
-        alert('Failed to load locations. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (eventCode) {
       loadDevices();
       loadLocations();
-      const interval = setInterval(loadLocations, 20000);
-
-      return () => clearInterval(interval);
     }
   }, [eventCode]);
 
+  // useEffect para manejar el intervalo de actualización basado en autoRefresh
+  useEffect(() => {
+    if (!eventCode) return;
+
+    let interval = null;
+    if (autoRefresh) {
+      interval = setInterval(loadLocations, REFRESH_INTERVAL * 1000);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [autoRefresh, eventCode]);
+
   const getRowStyle = (errorCode) => {
     switch (errorCode) {
-      case 0: 
+      case 0:
         return { backgroundColor: 'lightgreen' };
-      case 1: 
+      case 1:
         return { backgroundColor: 'lightyellow' };
-      case 2: 
+      case 2:
         return { backgroundColor: 'lightcoral' };
-      default: 
+      default:
         return { backgroundColor: 'white' };
     }
   };
@@ -65,7 +89,7 @@ const GetLocations = () => {
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'N/A';
     const date = new Date(timestamp);
-    const formattedDate = date.toISOString().split('T')[0]; 
+    const formattedDate = date.toISOString().split('T')[0];
     const formattedTime = date.toISOString().split('T')[1].split('Z')[0];
 
     return (
@@ -81,7 +105,6 @@ const GetLocations = () => {
     return device ? device.color : 'transparent';
   };
 
-  // Función para obtener el nombre del dispositivo
   const getDeviceName = (deviceID) => {
     const device = devices.find((d) => d.deviceID === deviceID);
     return device ? device.name : deviceID;
@@ -91,7 +114,7 @@ const GetLocations = () => {
     try {
       if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
         await deleteAllEventRawLocations(eventCode);
-        setLocations([]); 
+        setLocations([]);
         alert('Todas las ubicaciones han sido eliminadas correctamente.');
       }
     } catch (error) {
@@ -100,12 +123,13 @@ const GetLocations = () => {
     }
   };
 
-  const filteredLocations = selectedDevice === 'ALL'
-  ? locations
-  : locations.filter((loc) => loc.deviceID === selectedDevice);
+  const filteredLocations =
+    selectedDevice === 'ALL'
+      ? locations
+      : locations.filter((loc) => loc.deviceID === selectedDevice);
 
   return (
-    <div>
+    <div style={{ position: 'relative', padding: '20px' }}>
       <button
         onClick={handleDeleteAllLocations}
         style={{
@@ -120,6 +144,18 @@ const GetLocations = () => {
       >
         Eliminar todas las ubicaciones
       </button>
+
+      <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
+        <label style={{ cursor: 'pointer', marginRight: '10px' }} className="switch">
+          <input
+            type="checkbox"
+            checked={autoRefresh}
+            onChange={(e) => setAutoRefresh(e.target.checked)}
+          />
+          <span className="slider round"></span>
+        </label>
+        <span>Actualizar automáticamente cada {REFRESH_INTERVAL} segundos</span>
+      </div>
 
       {devices.length > 1 && (
         <div
@@ -202,5 +238,3 @@ const GetLocations = () => {
 };
 
 export default GetLocations;
-
-

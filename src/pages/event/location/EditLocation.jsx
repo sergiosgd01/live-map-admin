@@ -7,16 +7,21 @@ import { lightenColor, darkenColor } from '../../../utils/colorUtils';
 
 const EditLocation = ({ eventCode, deviceID }) => {
   const map = useMap();
+
   const markersRef = useRef([]);
   const polylineRef = useRef(null);
   const tempPolylineRef = useRef(null);
   const tempMarkersRef = useRef([]);
+
   const [newPoints, setNewPoints] = useState([]);
   const [selectedMarkers, setSelectedMarkers] = useState([]);
   const [isMapCentered, setIsMapCentered] = useState(false);
   const [mode, setMode] = useState('');
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [deviceColor, setDeviceColor] = useState('#0000FF');
+
+  const [firstLoad, setFirstLoad] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const clearTemporaryMarkersAndLines = () => {
     tempMarkersRef.current.forEach((marker) => marker.setMap(null));
@@ -31,12 +36,17 @@ const EditLocation = ({ eventCode, deviceID }) => {
   };
 
   const loadDeviceColor = useCallback(async () => {
-    const device = await fetchDeviceByDeviceIDEventCode(deviceID, eventCode);
-    console.log('device:', device);
-    setDeviceColor(device.color || '#0000FF'); 
+    try {
+      const device = await fetchDeviceByDeviceIDEventCode(deviceID, eventCode);
+      const color = device?.color ? `#${device.color.replace('#', '')}` : '#FF0000';
+      setDeviceColor(color);
+    } catch (err) {
+      console.error('Error al cargar color del dispositivo:', err);
+      setDeviceColor('#FF0000'); // fallback
+    }
   }, [deviceID, eventCode]);
 
-  const loadLocationMarkers = useCallback(async () => {
+  const loadLocationMarkers = useCallback(async (shouldCenter = false) => {
     if (!map || !eventCode) return;
 
     markersRef.current.forEach((marker) => marker.setMap(null));
@@ -53,7 +63,7 @@ const EditLocation = ({ eventCode, deviceID }) => {
       let fillColor = deviceColor;
 
       if (index === 0) {
-        fillColor = lightenColor(deviceColor, 30); // Primer punto más claro
+        fillColor = lightenColor(deviceColor, 50); // Primer punto más claro
       } else if (index === markers.length - 1) {
         fillColor = darkenColor(deviceColor, 30); // Último punto más oscuro
       }
@@ -85,7 +95,7 @@ const EditLocation = ({ eventCode, deviceID }) => {
             } else {
               newMarker.setIcon({
                 ...newMarker.getIcon(),
-                fillColor: lightenColor(deviceColor, 30),
+                fillColor: lightenColor(deviceColor, 50),
               });
               return [...prev, marker._id];
             }
@@ -103,15 +113,18 @@ const EditLocation = ({ eventCode, deviceID }) => {
         });
       }
 
+      setLoading(false);
+
       markersRef.current.push(newMarker);
       return position;
     });
 
-    if (!isMapCentered && path.length > 0) {
-      const lastMarkerPosition = path[path.length - 1];
-      map.panTo(lastMarkerPosition);
-      map.setZoom(14);
-      setIsMapCentered(true);
+    // 5) Ajusta el mapa a todos los markers (bounding)
+    if (shouldCenter) {
+      const bounds = new window.google.maps.LatLngBounds();
+      path.forEach((pos) => bounds.extend(pos));
+      map.fitBounds(bounds);
+      console.log('Mapa ajustado a bounds:', bounds);
     }
 
     redrawPolyline(markers);
@@ -139,10 +152,16 @@ const EditLocation = ({ eventCode, deviceID }) => {
   };
 
   useEffect(() => {
-    loadDeviceColor();
-    clearTemporaryMarkersAndLines();
-    loadLocationMarkers();
+    (async () => {
+      setLoading(true); 
+      await loadDeviceColor();
+      clearTemporaryMarkersAndLines();
+      await loadLocationMarkers(true);
+      setFirstLoad(false);
+    })();
+  }, [loadDeviceColor, loadLocationMarkers]);  
 
+  useEffect(() => {
     if (map && mode === 'insert') {
       const handleMapClick = (e) => {
         const { latLng } = e;
@@ -178,7 +197,7 @@ const EditLocation = ({ eventCode, deviceID }) => {
         window.google.maps.event.clearListeners(map, 'click');
       };
     }
-  }, [map, eventCode, deviceID, loadLocationMarkers, mode, deviceColor]);
+  }, [map, mode, deviceColor]);
 
   const handleInsertPoints = async () => {
     if (newPoints.length === 0) {
@@ -186,6 +205,7 @@ const EditLocation = ({ eventCode, deviceID }) => {
       return;
     }
     try {
+      setLoading(true);
       for (const point of newPoints) {
 
         // Obtén la fecha ajustada a la zona horaria
@@ -208,10 +228,12 @@ const EditLocation = ({ eventCode, deviceID }) => {
       }
       clearTemporaryMarkersAndLines();
       alert('Puntos insertados correctamente');
-      await loadLocationMarkers();
+      await loadLocationMarkers(true);
     } catch (error) {
       console.error('Error al insertar puntos:', error);
       alert('Error al insertar puntos');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -221,33 +243,59 @@ const EditLocation = ({ eventCode, deviceID }) => {
       return;
     }
     try {
+      setLoading(true);
       for (const markerId of selectedMarkers) {
         await fetchDeleteLocation(markerId);
       }
       setSelectedMarkers([]);
       alert('Puntos eliminados correctamente');
-      await loadLocationMarkers();
+      await loadLocationMarkers(true);
     } catch (error) {
       console.error('Error al eliminar puntos:', error);
       alert('Error al eliminar puntos');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDeleteAllLocations = async () => {
-    try {
+    try { 
+      setLoading(true);
       if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
         await fetchDeleteLocationsByDeviceAndEvent(eventCode, deviceID);
         alert('Todas las ubicaciones se han eliminado correctamente.');
-        await loadLocationMarkers();
+        await loadLocationMarkers(true);
       }
     } catch (error) {
       console.error('Error al eliminar todas las ubicaciones:', error);
       alert('Error al eliminar todas las ubicaciones');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <>
+      {loading && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 9999,
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.5em',
+          }}
+        >
+          Cargando...
+        </div>
+      )}
       <button
         onClick={() => setMode((prev) => (prev === 'insert' ? '' : 'insert'))}
         style={{

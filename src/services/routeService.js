@@ -26,10 +26,9 @@ export const fetchRouteByEventCodeDeviceID = async (code, deviceID) => {
 
     const data = await response.json();
 
-    // Verificar si hay un mensaje de ausencia de datos
     if (data.message && data.route?.length === 0) {
-      console.warn(data.message); // Puedes mostrar un mensaje informativo en el frontend
-      return []; // Devuelve un array vacío
+      console.warn(data.message); 
+      return []; 
     }
 
     return data;

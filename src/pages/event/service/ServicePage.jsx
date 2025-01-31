@@ -1,16 +1,16 @@
 import React from "react";
 import SharedMap from "../../../components/SharedMap";
-import EditService from "./EditService";
+import Service from "./Service";
 import { useParams } from "react-router-dom";
 
-const EditServicePage = () => {
+const ServicePage = () => {
   const { eventCode } = useParams();
 
   return (
     <SharedMap>
-      <EditService eventCode={eventCode} />
+      <Service eventCode={eventCode} />
     </SharedMap>
   );
 };
 
-export default EditServicePage;
+export default ServicePage;
