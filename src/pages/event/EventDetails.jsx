@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { deleteEvent, fetchEventByCode } from '../../services/eventService';
+import { fetchDevicesByEventCode } from '../../services/deviceService';
 
 const EventDetails = () => {
   const { eventCode } = useParams();
@@ -34,6 +35,36 @@ const EventDetails = () => {
         console.error('Error al eliminar el evento:', err);
         alert('Error al eliminar el evento: ' + err.message);
       }
+    }
+  };
+
+  // Función para redirigir a editar rutas (ya implementada)
+  const handleEditRoute = async () => {
+    try {
+      const devices = await fetchDevicesByEventCode(event.code);
+      if (devices.length === 1) {
+        navigate(`/events/${event.code}/route/${devices[0].deviceID}/edit`);
+      } else {
+        navigate(`/events/${event.code}/route`);
+      }
+    } catch (err) {
+      console.error('Error al obtener dispositivos:', err);
+      alert('Error al obtener dispositivos: ' + err.message);
+    }
+  };
+
+  // Función para redirigir a editar ubicaciones
+  const handleEditLocation = async () => {
+    try {
+      const devices = await fetchDevicesByEventCode(event.code);
+      if (devices.length === 1) {
+        navigate(`/events/${event.code}/location/${devices[0].deviceID}/edit`);
+      } else {
+        navigate(`/events/${event.code}/location`);
+      }
+    } catch (err) {
+      console.error('Error al obtener dispositivos:', err);
+      alert('Error al obtener dispositivos: ' + err.message);
     }
   };
 
@@ -82,7 +113,9 @@ const EventDetails = () => {
         )}
         <h2>{event.name}</h2>
         <p><strong>Código:</strong> {event.code}</p>
-        <p><strong>Fechas:</strong> {new Date(event.startDate).toLocaleString()} - {new Date(event.endDate).toLocaleString()}</p>
+        <p>
+          <strong>Fechas:</strong> {new Date(event.startDate).toLocaleString()} - {new Date(event.endDate).toLocaleString()}
+        </p>
         <p><strong>Código Postal:</strong> {event.postalCode}</p>
         {event.image && (
           <img
@@ -98,12 +131,20 @@ const EventDetails = () => {
           <Link to={`/events/${event.code}/raw-locations`}>
             <button style={{ ...buttonStyle, backgroundColor: '#6c757d' }}>Ver ubicaciones</button>
           </Link>
-          <Link to={`/events/${event.code}/location`}>
-            <button style={{ ...buttonStyle, backgroundColor: '#28a745' }}>Editar Ubicaciones</button>
-          </Link>
-          <Link to={`/events/${event.code}/route`}>
-            <button style={{ ...buttonStyle, backgroundColor: '#ffc107', color: 'black' }}>Editar Ruta</button>
-          </Link>
+          {/* Botón para Editar Ubicaciones */}
+          <button
+            style={{ ...buttonStyle, backgroundColor: '#28a745' }}
+            onClick={handleEditLocation}
+          >
+            Editar Ubicaciones
+          </button>
+          {/* Botón para Editar Rutas */}
+          <button
+            style={{ ...buttonStyle, backgroundColor: '#ffc107', color: 'black' }}
+            onClick={handleEditRoute}
+          >
+            Editar Ruta
+          </button>
           <Link to={`/events/${event.code}/service`}>
             <button style={{ ...buttonStyle, backgroundColor: '#17a2b8' }}>Editar Servicios</button>
           </Link>

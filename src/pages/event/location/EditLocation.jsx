@@ -7,9 +7,11 @@ import { useMap } from '../../../components/SharedMap';
 // Services
 import { fetchLocationsByDeviceIdEventCode, fetchAddLocation, fetchDeleteLocation, fetchDeleteLocationsByDeviceAndEvent } from '../../../services/locationService';
 import { fetchDeviceByDeviceIDEventCode } from '../../../services/deviceService';
+import { fetchEventByCode } from '../../../services/eventService';
 
 // Utils
 import { lightenColor, darkenColor } from '../../../utils/colorUtils';
+import { centerMapBasedOnMarkers } from '../../../utils/mapCentering';
 
 const EditLocation = ({ eventCode, deviceID }) => {
   const map = useMap();
@@ -23,7 +25,9 @@ const EditLocation = ({ eventCode, deviceID }) => {
   const [selectedMarkers, setSelectedMarkers] = useState([]);
   const [mode, setMode] = useState('');
   const [selectedPoint, setSelectedPoint] = useState(null);
-  const [deviceColor, setDeviceColor] = useState('#0000FF');
+  const [deviceColor, setDeviceColor] = useState(null);
+
+  const [eventPostalCode, setEventPostalCode] = useState(null); 
 
   const [loading, setLoading] = useState(false);
 
@@ -41,6 +45,14 @@ const EditLocation = ({ eventCode, deviceID }) => {
 
   const loadDeviceColor = useCallback(async () => {
     try {
+      const eventData = await fetchEventByCode(eventCode);
+      let postalCode = null;
+
+      if (eventData) {
+        postalCode = eventData.postalCode;
+        setEventPostalCode(postalCode);
+      }
+
       const device = await fetchDeviceByDeviceIDEventCode(deviceID, eventCode);
       const color = device?.color ? `#${device.color.replace('#', '')}` : '#FF0000';
       setDeviceColor(color);
@@ -48,10 +60,10 @@ const EditLocation = ({ eventCode, deviceID }) => {
       console.error('Error al cargar color del dispositivo:', err);
       setDeviceColor('#FF0000'); 
     }
-  }, [deviceID, eventCode]);
+  }, [deviceID, eventCode]);  
 
   const loadLocationMarkers = useCallback(async (shouldCenter = false) => {
-    if (!map || !eventCode) return;
+    if (!map || !eventCode || !deviceColor) return;
 
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
@@ -60,7 +72,16 @@ const EditLocation = ({ eventCode, deviceID }) => {
       polylineRef.current = null;
     }
 
+    // 2) Fetch de la ruta
     const markers = await fetchLocationsByDeviceIdEventCode(deviceID, eventCode);
+    if (!markers || markers.length === 0) {
+      if (shouldCenter) {
+        // Usamos la función para centrar el mapa basado en el código postal del evento
+        centerMapBasedOnMarkers(map, false, eventPostalCode);
+      }
+      setLoading(false); // Desactivamos el loading
+      return;
+    }
 
     const path = markers.map((marker, index) => {
       const position = { lat: marker.latitude, lng: marker.longitude };
@@ -132,7 +153,7 @@ const EditLocation = ({ eventCode, deviceID }) => {
     }
 
     redrawPolyline(markers);
-  }, [map, eventCode, deviceID, mode, deviceColor]);
+  }, [map, eventCode, deviceID, mode, deviceColor, eventPostalCode]);
 
   const redrawPolyline = (markers) => {
     if (polylineRef.current) {
@@ -159,10 +180,15 @@ const EditLocation = ({ eventCode, deviceID }) => {
     (async () => {
       setLoading(true); 
       await loadDeviceColor();
-      clearTemporaryMarkersAndLines();
-      await loadLocationMarkers(true);
     })();
-  }, [loadDeviceColor, loadLocationMarkers]);  
+  }, [loadDeviceColor]);
+  
+  useEffect(() => {
+    if (deviceColor) {
+      clearTemporaryMarkersAndLines();
+      loadLocationMarkers(true);
+    }
+  }, [deviceColor, loadLocationMarkers]); 
 
   useEffect(() => {
     if (map && mode === 'insert') {

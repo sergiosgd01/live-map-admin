@@ -31,11 +31,10 @@ const EditRoute = ({ eventCode, deviceID }) => {
   const [selectedMarkers, setSelectedMarkers] = useState([]);
   const [mode, setMode] = useState('');
   const [selectedPoint, setSelectedPoint] = useState(null);
-  const [deviceColor, setDeviceColor] = useState('#FF0000');
+  const [deviceColor, setDeviceColor] = useState(null);
 
   const [eventPostalCode, setEventPostalCode] = useState(null); 
 
-  const [firstLoad, setFirstLoad] = useState(true);
   const [loading, setLoading] = useState(false);
 
   /**
@@ -68,20 +67,21 @@ const EditRoute = ({ eventCode, deviceID }) => {
         postalCode = eventData.postalCode;
         setEventPostalCode(postalCode);
       }
+
       const device = await fetchDeviceByDeviceIDEventCode(deviceID, eventCode);
-      const color = device?.color ? `#${device.color.replace('#', '')}` : '#FF0000';
-      setDeviceColor(color);
-    } catch (err) {
-      console.error('Error al cargar color del dispositivo:', err);
-      setDeviceColor('#FF0000'); 
-    }
-  }, [deviceID, eventCode]);
+        const color = device?.color ? `#${device.color.replace('#', '')}` : '#FF0000';
+        setDeviceColor(color);
+      } catch (err) {
+        console.error('Error al cargar color del dispositivo:', err);
+        setDeviceColor('#FF0000'); 
+      }
+    }, [deviceID, eventCode]);  
 
   /**
    * Carga los markers de la ruta y ajusta el mapa a todos los puntos.
    */
   const loadRouteMarkers = useCallback(async (shouldCenter = false) => {
-    if (!map || !eventCode) return;
+    if (!map || !eventCode || !deviceColor) return;
   
     // 1) Limpiar markers previos
     markersRef.current.forEach((marker) => marker.setMap(null));
@@ -203,22 +203,36 @@ const EditRoute = ({ eventCode, deviceID }) => {
     setLoading(false);
   }, [map, eventCode, deviceID, mode, deviceColor, eventPostalCode]);
   
-  /**
-   * Al montar o cambiar eventCode/deviceID => cargar color y markers
-   */
+  // /**
+  //  * Al montar o cambiar eventCode/deviceID => cargar color y markers
+  //  */
+  // useEffect(() => {
+  //   (async () => {
+  //     setLoading(true);
+  //     await loadDeviceColor();
+  //     clearTemporaryMarkersAndLines();
+  
+  //     // Llamada con firstLoad (true la primera vez), centrará el mapa
+  //     await loadRouteMarkers(firstLoad);
+  
+  //     // Ponerlo en false para que en futuros "cambios" no centre automáticamente
+  //     setFirstLoad(false);
+  //   })();
+  // }, [loadDeviceColor, loadRouteMarkers]);
+
   useEffect(() => {
     (async () => {
-      setLoading(true);
+      setLoading(true); 
       await loadDeviceColor();
-      clearTemporaryMarkersAndLines();
-  
-      // Llamada con firstLoad (true la primera vez), centrará el mapa
-      await loadRouteMarkers(firstLoad);
-  
-      // Ponerlo en false para que en futuros "cambios" no centre automáticamente
-      setFirstLoad(false);
     })();
-  }, [loadDeviceColor, loadRouteMarkers]);
+  }, [loadDeviceColor]);
+  
+  useEffect(() => {
+    if (deviceColor) {
+      clearTemporaryMarkersAndLines();
+      loadRouteMarkers(true);
+    }
+  }, [deviceColor, loadRouteMarkers]); 
   
   /**
    * Modo "insert": cada click en el mapa crea un marker temporal

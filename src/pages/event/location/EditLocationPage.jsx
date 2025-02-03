@@ -4,8 +4,7 @@ import SharedMap from '../../../components/SharedMap';
 import EditLocation from './EditLocation'; 
 
 const EditLocationPage = () => {
-  const { eventCode } = useParams();
-  const { deviceID } = useParams();
+  const { eventCode, deviceID } = useParams();
 
   return (
     <SharedMap>
