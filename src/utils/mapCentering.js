@@ -11,6 +11,7 @@ const defaultCenter = { lat: 40.4168, lng: -3.7038 }; // Madrid
  * @param {string} eventPostalCode - Código postal del evento.
  */
 export const centerMapBasedOnMarkers = (map, hasMarkers, eventPostalCode) => {
+  console.log('centerMapBasedOnMarkers', hasMarkers, eventPostalCode);
   if (hasMarkers) {
     // Si hay marcadores, asumimos que los bounds ya están establecidos en el componente.
     return;

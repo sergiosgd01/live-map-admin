@@ -115,7 +115,7 @@ const AddEvent = () => {
 
       const createdEvent = await addEvent(adjustedEvent);
       alert('Evento creado exitosamente');
-      navigate(`/events/${createdEvent.event.code}`);  
+      navigate(`/events/${createdEvent.event.code}`, { replace: true });
     } catch (err) {
       console.error('Error al crear el evento:', err);
       alert('Error al crear el evento: ' + err.message);

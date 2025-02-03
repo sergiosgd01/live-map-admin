@@ -1,9 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+// Components
 import { useMap } from "../../../components/SharedMap";
+
+// Services
 import { fetchDevicesByEventCode } from "../../../services/deviceService";
 import { fetchLocationsByDeviceIdEventCode } from "../../../services/locationService";
 import { fetchEventByCode } from "../../../services/eventService";
-import { useNavigate } from "react-router-dom";
+
+// Utils
 import { centerMapBasedOnMarkers } from "../../../utils/mapCentering";
 
 const Location = ({ eventCode }) => {
@@ -22,7 +28,7 @@ const Location = ({ eventCode }) => {
     if (!map || !eventCode) return;
 
     const loadDeviceMarkers = async () => {
-      setLoading(true); // Inicia la carga
+      setLoading(true); 
       try {
         const eventData = await fetchEventByCode(eventCode);
         let postalCode = null;

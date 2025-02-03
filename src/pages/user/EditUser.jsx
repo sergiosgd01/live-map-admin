@@ -29,7 +29,7 @@ const EditUser = () => {
     try {
       await updateUser(id, user);
       alert('Usuario actualizado exitosamente');
-      navigate('/users');
+      navigate(-1);
     } catch (err) {
       alert('Error al actualizar el usuario: ' + err.message);
     }

@@ -130,7 +130,7 @@ const EditEvent = () => {
       alert('Evento actualizado exitosamente');
       const updatedEvent = await fetchEventByCode(eventCode);
       setEvent(updatedEvent);
-      navigate(`/events/${event.code}`);
+      navigate(-1);
     } catch (err) {
       console.error('Error al actualizar el evento:', err);
       alert('Error al actualizar el evento: ' + err.message);

@@ -20,8 +20,8 @@ const Route = ({ eventCode }) => {
   // Estados
   const [devices, setDevices] = useState([]);
   const [deviceRoutes, setDeviceRoutes] = useState({});
-  const [eventPostalCode, setEventPostalCode] = useState(null); // Código postal del evento
-  const [loading, setLoading] = useState(true); // Estado de carga
+  const [eventPostalCode, setEventPostalCode] = useState(null); 
+  const [loading, setLoading] = useState(true); 
 
   // -- Función para limpiar marcadores/polilíneas anteriores
   const clearMarkersAndPolylines = () => {

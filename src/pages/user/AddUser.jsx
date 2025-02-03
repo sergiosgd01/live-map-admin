@@ -56,7 +56,7 @@ const AddUser = () => {
     try {
       await addUser(user);
       alert('Usuario creado exitosamente');
-      navigate('/users');
+      navigate(-1);
     } catch (err) {
       alert('Error al crear el usuario: ' + err.message);
     }

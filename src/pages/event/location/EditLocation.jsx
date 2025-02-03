@@ -1,8 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { DateTime } from 'luxon';
+
+// Components
 import { useMap } from '../../../components/SharedMap';
+
+// Services
 import { fetchLocationsByDeviceIdEventCode, fetchAddLocation, fetchDeleteLocation, fetchDeleteLocationsByDeviceAndEvent } from '../../../services/locationService';
 import { fetchDeviceByDeviceIDEventCode } from '../../../services/deviceService';
+
+// Utils
 import { lightenColor, darkenColor } from '../../../utils/colorUtils';
 
 const EditLocation = ({ eventCode, deviceID }) => {
@@ -15,12 +21,10 @@ const EditLocation = ({ eventCode, deviceID }) => {
 
   const [newPoints, setNewPoints] = useState([]);
   const [selectedMarkers, setSelectedMarkers] = useState([]);
-  const [isMapCentered, setIsMapCentered] = useState(false);
   const [mode, setMode] = useState('');
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [deviceColor, setDeviceColor] = useState('#0000FF');
 
-  const [firstLoad, setFirstLoad] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const clearTemporaryMarkersAndLines = () => {
@@ -42,7 +46,7 @@ const EditLocation = ({ eventCode, deviceID }) => {
       setDeviceColor(color);
     } catch (err) {
       console.error('Error al cargar color del dispositivo:', err);
-      setDeviceColor('#FF0000'); // fallback
+      setDeviceColor('#FF0000'); 
     }
   }, [deviceID, eventCode]);
 
@@ -128,7 +132,7 @@ const EditLocation = ({ eventCode, deviceID }) => {
     }
 
     redrawPolyline(markers);
-  }, [map, eventCode, deviceID, isMapCentered, mode, deviceColor]);
+  }, [map, eventCode, deviceID, mode, deviceColor]);
 
   const redrawPolyline = (markers) => {
     if (polylineRef.current) {
@@ -157,7 +161,6 @@ const EditLocation = ({ eventCode, deviceID }) => {
       await loadDeviceColor();
       clearTemporaryMarkersAndLines();
       await loadLocationMarkers(true);
-      setFirstLoad(false);
     })();
   }, [loadDeviceColor, loadLocationMarkers]);  
 

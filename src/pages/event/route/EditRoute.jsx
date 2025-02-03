@@ -1,6 +1,9 @@
-// src/components/EditRoute.jsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+
+// Components
 import { useMap } from '../../../components/SharedMap';
+
+// Services
 import {
   fetchRouteByEventCodeDeviceID,
   fetchDeleteRouteMarker,
@@ -8,9 +11,11 @@ import {
   fetchDeleteAllRoutes,
 } from '../../../services/routeService';
 import { fetchDeviceByDeviceIDEventCode } from '../../../services/deviceService';
+import { fetchEventByCode } from '../../../services/eventService';
+ 
+// Utils
 import { lightenColor, darkenColor } from '../../../utils/colorUtils';
-
-const defaultCenter = { lat: 40.4168, lng: -3.7038 };
+import { centerMapBasedOnMarkers } from '../../../utils/mapCentering';
 
 const EditRoute = ({ eventCode, deviceID }) => {
   const map = useMap();
@@ -27,6 +32,8 @@ const EditRoute = ({ eventCode, deviceID }) => {
   const [mode, setMode] = useState('');
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [deviceColor, setDeviceColor] = useState('#FF0000');
+
+  const [eventPostalCode, setEventPostalCode] = useState(null); 
 
   const [firstLoad, setFirstLoad] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -54,12 +61,19 @@ const EditRoute = ({ eventCode, deviceID }) => {
    */
   const loadDeviceColor = useCallback(async () => {
     try {
+      const eventData = await fetchEventByCode(eventCode);
+      let postalCode = null;
+
+      if (eventData) {
+        postalCode = eventData.postalCode;
+        setEventPostalCode(postalCode);
+      }
       const device = await fetchDeviceByDeviceIDEventCode(deviceID, eventCode);
       const color = device?.color ? `#${device.color.replace('#', '')}` : '#FF0000';
       setDeviceColor(color);
     } catch (err) {
       console.error('Error al cargar color del dispositivo:', err);
-      setDeviceColor('#FF0000'); // fallback
+      setDeviceColor('#FF0000'); 
     }
   }, [deviceID, eventCode]);
 
@@ -68,7 +82,7 @@ const EditRoute = ({ eventCode, deviceID }) => {
    */
   const loadRouteMarkers = useCallback(async (shouldCenter = false) => {
     if (!map || !eventCode) return;
-
+  
     // 1) Limpiar markers previos
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
@@ -76,22 +90,22 @@ const EditRoute = ({ eventCode, deviceID }) => {
       polylineRef.current.setMap(null);
       polylineRef.current = null;
     }
-
+  
     // 2) Fetch de la ruta
     const markersData = await fetchRouteByEventCodeDeviceID(eventCode, deviceID);
     if (!markersData || markersData.length === 0) {
-      console.log('No hay markers => centro por defecto');
       if (shouldCenter) {
-        map.setCenter(defaultCenter);
-        map.setZoom(6);
+        // Usamos la función para centrar el mapa basado en el código postal del evento
+        centerMapBasedOnMarkers(map, false, eventPostalCode);
       }
+      setLoading(false); // Desactivamos el loading
       return;
     }
-
+  
     // 3) Crear markers
     const pathPositions = markersData.map((marker, index) => {
       const position = { lat: marker.latitude, lng: marker.longitude };
-
+  
       // Ajustar color en primer y último
       let fillColor = deviceColor;
       if (index === 0) {
@@ -99,7 +113,7 @@ const EditRoute = ({ eventCode, deviceID }) => {
       } else if (index === markersData.length - 1) {
         fillColor = darkenColor(deviceColor, 30);
       }
-
+  
       const newMarker = new window.google.maps.Marker({
         position,
         map,
@@ -118,7 +132,7 @@ const EditRoute = ({ eventCode, deviceID }) => {
           strokeColor: 'black',
         },
       });
-
+  
       // Listeners según "mode"
       if (mode === 'delete') {
         newMarker.addListener('click', () => {
@@ -126,11 +140,11 @@ const EditRoute = ({ eventCode, deviceID }) => {
           setSelectedMarkers((prev) => {
             const isSelected = prev.includes(markerId);
             if (isSelected) {
-              // Quitar
+              // Quitar selección y restaurar color
               newMarker.setIcon({ ...newMarker.getIcon(), fillColor });
               return prev.filter((id) => id !== markerId);
             } else {
-              // Añadir
+              // Seleccionar marcador y cambiar color
               newMarker.setIcon({
                 ...newMarker.getIcon(),
                 fillColor: lightenColor(deviceColor, 50),
@@ -149,13 +163,11 @@ const EditRoute = ({ eventCode, deviceID }) => {
           });
         });
       }
-
-      setLoading(false);
-
+  
       markersRef.current.push(newMarker);
       return position;
     });
-
+  
     // 4) Crear polyline discontinua
     const routePath = markersData.map((m) => ({ lat: m.latitude, lng: m.longitude }));
     polylineRef.current = new window.google.maps.Polyline({
@@ -179,16 +191,18 @@ const EditRoute = ({ eventCode, deviceID }) => {
       ],
     });
     polylineRef.current.setMap(map);
-
+  
     // 5) Ajusta el mapa a todos los markers (bounding)
     if (shouldCenter) {
       const bounds = new window.google.maps.LatLngBounds();
       pathPositions.forEach((pos) => bounds.extend(pos));
       map.fitBounds(bounds);
-      console.log('Mapa ajustado a bounds:', bounds);
     }
-  }, [map, eventCode, deviceID, mode, deviceColor]);
-
+  
+    // Desactivar el loading una vez procesado todo
+    setLoading(false);
+  }, [map, eventCode, deviceID, mode, deviceColor, eventPostalCode]);
+  
   /**
    * Al montar o cambiar eventCode/deviceID => cargar color y markers
    */
@@ -205,18 +219,18 @@ const EditRoute = ({ eventCode, deviceID }) => {
       setFirstLoad(false);
     })();
   }, [loadDeviceColor, loadRouteMarkers]);
-
+  
   /**
    * Modo "insert": cada click en el mapa crea un marker temporal
    */
   useEffect(() => {
     if (!map) return;
     if (mode !== 'insert') return;
-
+  
     const handleMapClick = (e) => {
       const { latLng } = e;
       const newPoint = { latitude: latLng.lat(), longitude: latLng.lng() };
-
+  
       const tempMarker = new window.google.maps.Marker({
         position: { lat: newPoint.latitude, lng: newPoint.longitude },
         map,
@@ -230,7 +244,7 @@ const EditRoute = ({ eventCode, deviceID }) => {
           strokeColor: 'black',
         },
       });
-
+  
       // click => borrar este temporal
       tempMarker.addListener('click', () => {
         tempMarker.setMap(null);
@@ -241,17 +255,17 @@ const EditRoute = ({ eventCode, deviceID }) => {
           )
         );
       });
-
+  
       tempMarkersRef.current.push(tempMarker);
       setNewPoints((prev) => [...prev, newPoint]);
     };
-
+  
     map.addListener('click', handleMapClick);
     return () => {
       window.google.maps.event.clearListeners(map, 'click');
     };
   }, [map, mode, deviceColor]);
-
+  
   /**
    * Insertar los puntos nuevos
    */
@@ -275,7 +289,7 @@ const EditRoute = ({ eventCode, deviceID }) => {
       setLoading(false);
     } 
   };
-
+  
   /**
    * Eliminar markers seleccionados
    */
@@ -299,7 +313,7 @@ const EditRoute = ({ eventCode, deviceID }) => {
       setLoading(false);
     }
   };
-
+  
   /**
    * Elimina TODAS las rutas
    */
@@ -319,7 +333,7 @@ const EditRoute = ({ eventCode, deviceID }) => {
       setLoading(false);
     }
   };
-
+  
   return (
     <>
       {loading && (
@@ -487,4 +501,4 @@ const EditRoute = ({ eventCode, deviceID }) => {
   );
 };
 
-  export default EditRoute;
+export default EditRoute;

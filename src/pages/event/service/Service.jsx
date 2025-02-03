@@ -1,20 +1,33 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useMap } from '../../../components/SharedMap';
 import { useNavigate } from 'react-router-dom';
-import { fetchService, fetchCreateService, fetchDeleteService, fetchDeleteAllServices } from '../../../services/serviceService';
+
+// Components
+import { useMap } from '../../../components/SharedMap';
+
+// Services
+import {
+  fetchService,
+  fetchCreateService,
+  fetchDeleteService,
+  fetchDeleteAllServices,
+} from '../../../services/serviceService';
 import { fetchServiceTypes } from '../../../services/serviceTypeService';
+import { fetchEventByCode } from '../../../services/eventService';
+
+// Utils
+import { centerMapBasedOnMarkers } from '../../../utils/mapCentering';
 
 const Service = ({ eventCode }) => {
-  const map = useMap(); // Hook personalizado para obtener la instancia del mapa
+  const map = useMap(); // Instancia del mapa de Google Maps
   const navigate = useNavigate();
   const markersRef = useRef([]); // Referencia para almacenar los marcadores
+
   const [serviceTypes, setServiceTypes] = useState([]);
   const [selectedType, setSelectedType] = useState(null);
   const [newService, setNewService] = useState(null);
-  const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const [mode, setMode] = useState(''); // Modo actual: insertar, eliminar, etc.
+  const [mode, setMode] = useState('');   
 
   // Función para limpiar todos los marcadores del mapa
   const clearMarkers = () => {
@@ -25,35 +38,46 @@ const Service = ({ eventCode }) => {
   // Función para cargar los servicios desde el backend y mostrarlos en el mapa
   const loadServices = async () => {
     if (!map || !serviceTypes.length) {
-      console.warn('Mapa o tipos de servicios aún no están listos, retrasando carga de servicios.');
+      console.warn(
+        'Mapa o tipos de servicios aún no están listos, retrasando carga de servicios.'
+      );
       return;
     }
-
+  
     try {
+      const eventData = await fetchEventByCode(eventCode);
+      let postalCode = null;
+  
+      if (eventData) {
+        postalCode = eventData.postalCode;
+      }
+    
       const existingServices = await fetchService(eventCode); // Obtener servicios desde el backend
-      setServices(existingServices);
-
+  
       clearMarkers(); // Limpiar marcadores existentes
-
+  
       if (existingServices.length > 0) {
+        // Si existen servicios, creamos los marcadores y ajustamos el mapa
         existingServices.forEach((service) => {
-          const serviceType = serviceTypes.find((type) => type.type === service.type);
-
+          const serviceType = serviceTypes.find(
+            (type) => type.type === service.type
+          );
+  
           // Definir el ícono del marcador
           const icon = serviceType?.image
             ? {
-                url: serviceType.image, // Ícono personalizado si está disponible
+                url: serviceType.image,
                 scaledSize: new window.google.maps.Size(30, 30),
               }
             : {
-                path: window.google.maps.SymbolPath.CIRCLE, // Ícono por defecto: círculo
+                path: window.google.maps.SymbolPath.CIRCLE,
                 scale: 6,
-                fillColor: '#FF0000', // Color predeterminado
+                fillColor: '#FF0000',
                 fillOpacity: 1,
                 strokeWeight: 1,
                 strokeColor: '#000',
               };
-
+  
           // Crear el marcador
           const marker = new window.google.maps.Marker({
             position: { lat: service.latitude, lng: service.longitude },
@@ -61,50 +85,52 @@ const Service = ({ eventCode }) => {
             title: serviceType ? serviceType.name : 'Servicio',
             icon: icon,
           });
-
-          // Añadir listener para eliminar servicio si está en modo 'delete'
+  
           if (mode === 'delete') {
             marker.addListener('click', async () => {
-              if (window.confirm('¿Estás seguro de que deseas eliminar este servicio?')) {
+              if (
+                window.confirm(
+                  '¿Estás seguro de que deseas eliminar este servicio?'
+                )
+              ) {
                 try {
                   await fetchDeleteService(service._id);
                   alert('Servicio eliminado correctamente.');
-                  loadServices(); // Recargar servicios después de eliminar
+                  loadServices();
                 } catch (error) {
                   console.error('Error al eliminar el servicio:', error);
-                  alert('Error al eliminar el servicio. Inténtelo nuevamente.');
+                  alert(
+                    'Error al eliminar el servicio. Inténtelo nuevamente.'
+                  );
                 }
               }
             });
           }
-
-          markersRef.current.push(marker); // Almacenar el marcador
+  
+          markersRef.current.push(marker);
         });
-
-        // Ajustar el mapa para mostrar todos los marcadores
-        const allServices = existingServices;
-        if (allServices.length > 0) {
-          const bounds = new window.google.maps.LatLngBounds();
-          allServices.forEach((service) => {
-            bounds.extend({ lat: service.latitude, lng: service.longitude });
-          });
-          map.fitBounds(bounds);
-        } else {
-          // Opcional: Manejar caso donde no hay servicios
-          console.warn('No hay servicios para mostrar en el mapa.');
-        }
+  
+        const bounds = new window.google.maps.LatLngBounds();
+        existingServices.forEach((service) => {
+          bounds.extend({ lat: service.latitude, lng: service.longitude });
+        });
+        map.fitBounds(bounds);
       } else {
-        // Opcional: Manejar caso donde no hay servicios
+        centerMapBasedOnMarkers(map, false, postalCode);
         console.warn('No hay servicios para mostrar en el mapa.');
       }
     } catch (error) {
       console.error('Error al cargar los servicios:', error);
     }
   };
-
+  
   // Función para eliminar todos los servicios
   const handleDeleteAllServices = async () => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar todos los servicios? Esta acción no se puede deshacer.')) {
+    if (
+      !window.confirm(
+        '¿Estás seguro de que deseas eliminar todos los servicios? Esta acción no se puede deshacer.'
+      )
+    ) {
       return;
     }
 
@@ -165,7 +191,12 @@ const Service = ({ eventCode }) => {
 
     try {
       setLoading(true);
-      await fetchCreateService(eventCode, newService.latitude, newService.longitude, selectedType);
+      await fetchCreateService(
+        eventCode,
+        newService.latitude,
+        newService.longitude,
+        selectedType
+      );
       setLoading(false);
       alert('Servicio insertado correctamente.');
       setNewService(null);
@@ -196,7 +227,9 @@ const Service = ({ eventCode }) => {
           maxHeight: '90vh',
         }}
       >
-        <h2 style={{ marginTop: 0, fontSize: '16px', textAlign: 'center' }}>Opciones</h2>
+        <h2 style={{ marginTop: 0, fontSize: '16px', textAlign: 'center' }}>
+          Opciones
+        </h2>
 
         <button
           onClick={() => setMode((prev) => (prev === 'insert' ? '' : 'insert'))}
@@ -294,7 +327,9 @@ const Service = ({ eventCode }) => {
               <strong>Longitud:</strong> {newService?.longitude}
             </p>
 
-            <label htmlFor="serviceTypeModal">Seleccionar Tipo de Servicio:</label>
+            <label htmlFor="serviceTypeModal">
+              Seleccionar Tipo de Servicio:
+            </label>
             <select
               id="serviceTypeModal"
               value={selectedType || ''}
