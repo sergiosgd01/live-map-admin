@@ -88,12 +88,13 @@ export const addOrganization = async (organization) => {
 // Actualizar una organización por su ID
 export const updateOrganization = async (id, updatedOrganization) => {
   try {
+    console.log("holaaa,", updatedOrganization);
     const response = await fetch(`${API_URL}/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ name: updatedOrganization.name, code: updatedOrganization.code }),
+      body: JSON.stringify({ name: updatedOrganization.name, image: updatedOrganization.image }),
     });
 
     if (!response.ok) {

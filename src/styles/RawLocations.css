@@ -1,0 +1,89 @@
+/* Ajustes generales de DataTables en Bootstrap */
+
+table.dataTable {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+div.table-responsive {
+  overflow-x: hidden !important;
+  width: 100%;
+}
+
+div.dataTables_wrapper {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Información (ejemplo: "Mostrando 1 a 10...") */
+div.dataTables_wrapper div.dataTables_info {
+  width: 100%;
+  text-align: left;
+  margin-bottom: 5px;
+}
+
+/* Paginación en la misma línea, con scroll horizontal si sobrepasa */
+div.dataTables_wrapper div.dataTables_paginate {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+div.dataTables_wrapper div.dataTables_paginate ul.pagination {
+  flex-wrap: nowrap !important; /* Mantener todo en una sola línea */
+  white-space: nowrap !important;
+  overflow-x: auto;
+}
+
+/* Tamaños de letra y padding por 'responsiveness' */
+.dataTables_wrapper .pagination .page-link {
+  font-size: 0.75rem;
+  padding: 3px 6px;
+}
+
+.dataTables_wrapper .pagination .page-item {
+  margin: 0 2px;
+}
+
+/* Ajustes a partir de 768px en adelante */
+@media (min-width: 768px) {
+  .dataTables_wrapper .pagination .page-link {
+    font-size: 0.9rem;
+    padding: 6px 10px;
+  }
+}
+
+/* Pantallas grandes (>= 1200px) */
+@media (min-width: 1200px) {
+  .dataTables_wrapper .pagination .page-link {
+    font-size: 1rem;
+    padding: 8px 14px;
+  }
+}
+
+/* ============================= */
+/* PARA "Mostrar X ubicaciones" */
+/* ============================= */
+
+/* Evita quiebre de línea en la sección .dataTables_length */
+.dataTables_wrapper .dataTables_length {
+  white-space: nowrap;
+}
+
+/* Mantén label + select en la misma línea y centrados verticalmente */
+.dataTables_wrapper .dataTables_length label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem; /* Espacio entre el texto y el select */
+  margin-bottom: 0;
+}
+
+/* Ajusta el select para que no sea demasiado ancho */
+.dataTables_wrapper .dataTables_length select {
+  width: auto;
+  margin-left: 0;
+}

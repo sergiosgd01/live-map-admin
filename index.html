@@ -2,12 +2,48 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <link rel="icon" type="image/svg+xml" href="public/assets/images/liveMap-sm.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0 shrink-to-fit=no " />
+    <title>LiveMap</title>
+    <!-- Agrega aquí los enlaces a tus archivos CSS -->
+    <link rel="stylesheet" href="public/assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="public/assets/fonts/bootstrap/bootstrap-icons.css" />
+    <link rel="stylesheet" href="public/assets/css/main.css" />
+
+    <link rel="stylesheet" href="public/assets/vendor/overlay-scroll/OverlayScrollbars.min.css">
+
+    <!-- Data Tables -->
+    <link rel="stylesheet" href="public/assets/vendor/datatables/dataTables.bs5.css">
+    <link rel="stylesheet" href="public/assets/vendor/datatables/dataTables.bs5-custom.css">
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- Incluye tus scripts externos. Nota: como Vite sirve los archivos de public desde la raíz,
+         no incluyas la parte "/public" en la ruta. -->
+    <script src="public/assets/js/jquery.min.js"></script>
+    <script src="public/assets/js/bootstrap.bundle.min.js"></script>
+    <script src="public/assets/js/modernizr.js"></script>
+    <script src="public/assets/js/moment.js"></script>
+
+    <!-- Data Tables -->
+    <script src="public/assets/vendor/datatables/dataTables.min.js"></script>
+    <script src="public/assets/vendor/datatables/dataTables.bootstrap.min.js"></script>
+    <!-- <script src="assets/vendor/datatables/custom/custom-datatables.js"></script> -->
+
+    <!-- Vendor Js Files -->
+    <script src="public/assets/vendor/overlay-scroll/jquery.overlayScrollbars.min.js"></script>
+    <script src="public/assets/vendor/overlay-scroll/custom-scrollbar.js"></script>
+    <script src="public/assets/vendor/newsticker/newsTicker.min.js"></script>
+    <script src="public/assets/vendor/newsticker/custom-newsTicker.js"></script>
+    <script src="public/assets/vendor/daterange/daterange.js"></script>
+    <script src="public/assets/vendor/daterange/custom-daterange.js"></script>
+    <script src="public/assets/vendor/dropzone/dropzone.min.js"></script>
+
+    <!-- Main Js Required -->
+    <script src="public/assets/js/main.js"></script>
+
+    <!-- Carga el entry point de React -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
