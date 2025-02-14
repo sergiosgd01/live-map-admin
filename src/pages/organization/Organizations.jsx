@@ -1,15 +1,20 @@
 // src/pages/Org.jsx
-import React, { useEffect, useState } from 'react';
-import { Helmet } from 'react-helmet';
-import { Link, useNavigate } from 'react-router-dom';
-import Layout from '../../components/Layout';
+import React, { useEffect, useState, useRef } from 'react';
+
+// Services
 import { 
   fetchOrganizations, 
-  fetchOrganizationById,
   deleteOrganization, 
   updateOrganization, 
   addOrganization 
 } from '../../services/organizationService';
+
+// Components
+import Alert from '../../components/Alert';
+import Layout from '../../components/Layout';
+import OrganizationCard from '../../components/OrganizationCard';
+import ConfirmationModal from '../../components/ConfirmationModal';
+import Spinner from '../../components/Spinner';
 
 const Organizations = () => {
   const [organizations, setOrganizations] = useState([]);
@@ -19,7 +24,21 @@ const Organizations = () => {
   const [organizationToDelete, setOrganizationToDelete] = useState(null);
   const [errors, setErrors] = useState({});
 
-  const navigate = useNavigate();
+  // Estado para las alertas
+  const [alert, setAlert] = useState(null);
+  // Estado para mostrar el modal de confirmación de eliminación
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+
+  // Ref para el final de la lista de organizaciones
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    console.log("Alert actualizado:", alert);
+    if (alert) {
+      const timer = setTimeout(() => setAlert(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [alert]);
 
   useEffect(() => {
     const loadOrganizations = async () => {
@@ -39,9 +58,7 @@ const Organizations = () => {
   // Función para abrir el modal de confirmación de eliminación
   const confirmDelete = (org) => {
     setOrganizationToDelete(org);
-    const modalEl = document.getElementById("deleteConfirmModal");
-    const modal = new window.bootstrap.Modal(modalEl);
-    modal.show();
+    setShowDeleteConfirmModal(true);
   };
 
   // Función para ejecutar la eliminación cuando se confirma en el modal
@@ -50,13 +67,12 @@ const Organizations = () => {
       try {
         await deleteOrganization(organizationToDelete._id);
         setOrganizations(organizations.filter(org => org._id !== organizationToDelete._id));
-        const modalEl = document.getElementById("deleteConfirmModal");
-        const modal = window.bootstrap.Modal.getInstance(modalEl);
-        if (modal) modal.hide();
+        setShowDeleteConfirmModal(false);
         setOrganizationToDelete(null);
+        setAlert({ type: 'success', message: 'Organización eliminada correctamente' });
       } catch (err) {
         console.error('Error al eliminar la organización:', err);
-        alert('Error al eliminar la organización: ' + err.message);
+        setAlert({ type: 'danger', message: 'Error al eliminar la organización: ' + err.message });
       }
     }
   };
@@ -81,15 +97,23 @@ const Organizations = () => {
 
     if (selectedOrganization._id) {
       try {
-        await updateOrganization(selectedOrganization._id, selectedOrganization);
+        // Incluimos el campo "code" en el payload, por si la API lo requiere
+        const updatedData = {
+          name: selectedOrganization.name,
+          image: selectedOrganization.image,
+          code: selectedOrganization.code,
+        };
+        await updateOrganization(selectedOrganization._id, updatedData);
         setOrganizations(
-          organizations.map(org => 
-            org._id === selectedOrganization._id ? selectedOrganization : org
+          organizations.map(org =>
+            org._id === selectedOrganization._id ? { ...selectedOrganization, ...updatedData } : org
           )
         );
         if (modal) modal.hide();
+        setAlert({ type: 'success', message: 'Organización actualizada correctamente' });
       } catch (err) {
         console.error("Error al actualizar la organización:", err.message);
+        setAlert({ type: 'danger', message: 'Error al procesar la organización: ' + err.message });
       }
     } else {
       try {
@@ -97,140 +121,62 @@ const Organizations = () => {
         const data = await fetchOrganizations();
         setOrganizations(data);
         if (modal) modal.hide();
+        setAlert({ type: 'success', message: 'Organización creada correctamente' });
+        setTimeout(() => {
+          if (bottomRef.current) {
+            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 200);
       } catch (err) {
         console.error("Error al crear la organización:", err.message);
+        setAlert({ type: 'danger', message: 'Error al procesar la organización: ' + err.message });
       }
     }
   };
 
-  if (loading)
-    return (
-      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "50vh" }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
-
-  if (error) return <p>Error: {error}</p>;
-
   return (
     <>
       <Layout>
+        {/* SPINNER DE CARGA */}
+        {loading && <Spinner />}
+
         <div className="content-wrapper" style={{ padding: '20px' }}>
-          <div className="row gx-3 justify-content-center align-items-stretch">
-            {organizations.map(org => (
-              // Al hacer clic en la tarjeta, se navega a la pantalla de eventos
-              <div
-                key={org._id}
-                className="col-sm-4 col-12"
-                style={{ marginBottom: '20px', cursor: 'pointer' }}
-                onClick={() => navigate(`/organizations/${org.code}/events`)}
-              >
-                <div className="card h-100 d-flex flex-column">
-                  {/* Imagen con aspect ratio fijo */}
-                  <div
-                    className="card-img"
-                    style={{
-                      position: 'relative',
-                      width: '100%',
-                      aspectRatio: '16/9',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {org.image ? (
-                      <img
-                        src={org.image}
-                        alt={org.name}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover'
-                        }}
-                        className="img-fluid"
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '100%',
-                          backgroundColor: '#ddd',
-                          display: 'flex',
-                          justifyContent: 'center',
-                          alignItems: 'center'
-                        }}
-                      >
-                        <span>No image</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Cabecera con el nombre de la organización */}
-                  <div className="card-header">
-                    <div className="card-title">{org.name}</div>
-                  </div>
-
-                  {/* Cuerpo de la tarjeta que muestra todos los datos */}
-                  <div className="card-body d-flex flex-column">
-                    <p className="mb-4">Código: {org.code}</p>
-
-                    {/* Sección de botones se posiciona al final */}
-                    <div className="mt-auto">
-                      <div className="row">
-                        <div className="col-4 text-start">
-                          <button
-                            type="button"
-                            className="btn btn-outline-primary"
-                            data-bs-toggle="modal"
-                            data-bs-target="#editOrganization"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setErrors({});
-                              setSelectedOrganization(org);
-                              const modalEl = document.getElementById("editOrganization");
-                              if (modalEl) {
-                                const formEl = modalEl.querySelector("form");
-                                if (formEl) {
-                                  formEl.classList.remove("was-validated");
-                                }
-                              }
-                            }}
-                          >
-                            <i className="bi bi-pencil"></i>
-                          </button>
-                        </div>
-                        <div className="col-4 text-center">
-                          <Link to={`/organizations/${org.code}/events`} onClick={(e) => e.stopPropagation()}>
-                            <button className="btn btn-outline-success">
-                              <i className="bi bi-calendar-event"></i>
-                            </button>
-                          </Link>
-                        </div>
-                        <div className="col-4 text-end">
-                          <button
-                            className="btn btn-outline-danger"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              confirmDelete(org);
-                            }}
-                          >
-                            <i className="bi bi-trash"></i>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
+          {alert && (
+            <Alert 
+              type={alert.type} 
+              message={alert.message} 
+              onClose={() => setAlert(null)} 
+            />
+          )}
+          {organizations.length > 0 ? (
+            <div className="row gx-3 justify-content-center align-items-stretch">
+              {organizations.map(org => (
+                <OrganizationCard
+                  key={org._id}
+                  org={org}
+                  onEdit={(org) => {
+                    setErrors({});
+                    setSelectedOrganization(org);
+                    const modalEl = document.getElementById("editOrganization");
+                    if (modalEl) {
+                      const formEl = modalEl.querySelector("form");
+                      if (formEl) {
+                        formEl.classList.remove("was-validated");
+                      }
+                    }
+                  }}
+                  onDelete={(org) => confirmDelete(org)}
+                />
+              ))}
+              <div ref={bottomRef} />
+            </div>
+          ) : (
+            !loading && (
+              <p style={{ textAlign: 'center' }}>
+                No hay organizaciones registradas.
+              </p>
+            )
+          )}
           {/* Botón “+” para agregar una nueva organización */}
           <button
             onClick={() => {
@@ -356,38 +302,21 @@ const Organizations = () => {
           </div>
         </div>
 
-        {/* Modal de confirmación de eliminación */}
-        <div
-          className="modal fade"
-          id="deleteConfirmModal"
-          data-bs-backdrop="static"
-          data-bs-keyboard="false"
-          tabIndex="-1"
-          aria-labelledby="deleteConfirmModalLabel"
-          aria-hidden="true"
-        >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title" id="deleteConfirmModalLabel">Confirmar Eliminación</h5>
-                <button type="button" className="btn btn-close" data-bs-dismiss="modal" aria-label="Close">
-                  <span aria-hidden="true"></span>
-                </button>
-              </div>
-              <div className="modal-body">
-                {organizationToDelete && (
-                  <p>
-                    ¿Estás seguro de que deseas eliminar la organización <strong>{organizationToDelete.name}</strong>?
-                  </p>
-                )}
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" className="btn btn-danger" onClick={handleDeleteConfirmed}>Eliminar</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Modal de confirmación de eliminación usando ConfirmationModal */}
+        {showDeleteConfirmModal && (
+          <ConfirmationModal
+            id="deleteConfirmModal"
+            title="Confirmar Eliminación"
+            message={
+              organizationToDelete
+                ? `¿Estás seguro de que deseas eliminar la organización ${organizationToDelete.name}?`
+                : ''
+            }
+            onConfirm={handleDeleteConfirmed}
+            onCancel={() => setShowDeleteConfirmModal(false)}
+            extraContent={null}
+          />
+        )}
       </Layout>
     </>
   );

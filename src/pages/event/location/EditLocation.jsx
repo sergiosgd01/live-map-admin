@@ -3,9 +3,19 @@ import { DateTime } from 'luxon';
 
 // Components
 import { useMap } from '../../../components/SharedMap';
+import Alert from '../../../components/Alert'; 
+import ConfirmationModal from '../../../components/ConfirmationModal';
+import PointInfo from '../../../components/PointInfo';
+import EditPanel from '../../../components/EditPanel';
+import Spinner from '../../../components/Spinner';
 
 // Services
-import { fetchLocationsByDeviceIdEventCode, fetchAddLocation, fetchDeleteLocation, fetchDeleteLocationsByDeviceAndEvent } from '../../../services/locationService';
+import {
+  fetchLocationsByDeviceIdEventCode,
+  fetchAddLocation,
+  fetchDeleteLocation,
+  fetchDeleteLocationsByDeviceAndEvent
+} from '../../../services/locationService';
 import { fetchDeviceByDeviceIDEventCode } from '../../../services/deviceService';
 import { fetchEventByCode } from '../../../services/eventService';
 
@@ -26,17 +36,26 @@ const EditLocation = ({ eventCode, deviceID }) => {
   const [mode, setMode] = useState('');
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [deviceColor, setDeviceColor] = useState(null);
-
-  const [eventPostalCode, setEventPostalCode] = useState(null); 
-
+  const [eventPostalCode, setEventPostalCode] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState(null);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+
+  // Autoocultar la alerta después de 5 segundos
+  useEffect(() => {
+    console.log("Alert actualizado:", alert);
+    if (alert) {
+      const timer = setTimeout(() => setAlert(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [alert]);
 
   const clearTemporaryMarkersAndLines = () => {
+    console.log("Limpiando marcadores y líneas temporales");
     tempMarkersRef.current.forEach((marker) => marker.setMap(null));
     tempMarkersRef.current = [];
     setSelectedMarkers([]);
     setNewPoints([]);
-
     if (tempPolylineRef.current) {
       tempPolylineRef.current.setMap(null);
       tempPolylineRef.current = null;
@@ -45,17 +64,17 @@ const EditLocation = ({ eventCode, deviceID }) => {
 
   const loadDeviceColor = useCallback(async () => {
     try {
+      console.log("Cargando color del dispositivo...");
       const eventData = await fetchEventByCode(eventCode);
       let postalCode = null;
-
       if (eventData) {
         postalCode = eventData.postalCode;
         setEventPostalCode(postalCode);
       }
-
       const device = await fetchDeviceByDeviceIDEventCode(deviceID, eventCode);
       const color = device?.color ? `#${device.color.replace('#', '')}` : '#FF0000';
       setDeviceColor(color);
+      console.log("Color del dispositivo cargado:", color);
     } catch (err) {
       console.error('Error al cargar color del dispositivo:', err);
       setDeviceColor('#FF0000'); 
@@ -64,6 +83,7 @@ const EditLocation = ({ eventCode, deviceID }) => {
 
   const loadLocationMarkers = useCallback(async (shouldCenter = false) => {
     if (!map || !eventCode || !deviceColor) return;
+    console.log("Cargando marcadores de ubicación...");
 
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
@@ -72,27 +92,23 @@ const EditLocation = ({ eventCode, deviceID }) => {
       polylineRef.current = null;
     }
 
-    // 2) Fetch de la ruta
     const markers = await fetchLocationsByDeviceIdEventCode(deviceID, eventCode);
     if (!markers || markers.length === 0) {
       if (shouldCenter) {
-        // Usamos la función para centrar el mapa basado en el código postal del evento
         centerMapBasedOnMarkers(map, false, eventPostalCode);
       }
-      setLoading(false); // Desactivamos el loading
+      setLoading(false);
       return;
     }
 
     const path = markers.map((marker, index) => {
       const position = { lat: marker.latitude, lng: marker.longitude };
       let fillColor = deviceColor;
-
       if (index === 0) {
-        fillColor = lightenColor(deviceColor, 50); // Primer punto más claro
+        fillColor = lightenColor(deviceColor, 50);
       } else if (index === markers.length - 1) {
-        fillColor = darkenColor(deviceColor, 30); // Último punto más oscuro
+        fillColor = darkenColor(deviceColor, 30);
       }
-
       const newMarker = new window.google.maps.Marker({
         position,
         map,
@@ -109,62 +125,52 @@ const EditLocation = ({ eventCode, deviceID }) => {
 
       if (mode === 'delete') {
         newMarker.addListener('click', () => {
+          console.log("Marcador clicado en modo eliminar:", marker._id);
           setSelectedMarkers((prev) => {
             const isSelected = prev.includes(marker._id);
             if (isSelected) {
-              newMarker.setIcon({
-                ...newMarker.getIcon(),
-                fillColor: fillColor,
-              });
+              newMarker.setIcon({ ...newMarker.getIcon(), fillColor: fillColor });
               return prev.filter((id) => id !== marker._id);
             } else {
-              newMarker.setIcon({
-                ...newMarker.getIcon(),
-                fillColor: lightenColor(deviceColor, 50),
-              });
+              newMarker.setIcon({ ...newMarker.getIcon(), fillColor: lightenColor(deviceColor, 50) });
               return [...prev, marker._id];
             }
           });
         });
       } else if (mode === '') {
         newMarker.addListener('click', () => {
+          console.log("Marcador clicado en modo ver:", marker._id);
           setSelectedPoint({
-            eventCode: marker.code,
+            id: marker._id,
             latitude: marker.latitude,
             longitude: marker.longitude,
             accuracy: marker.accuracy,
             timestamp: marker.timestamp,
+            code: marker.code,
           });
         });
       }
-
-      setLoading(false);
-
       markersRef.current.push(newMarker);
       return position;
     });
 
-    // 5) Ajusta el mapa a todos los markers (bounding)
     if (shouldCenter) {
       const bounds = new window.google.maps.LatLngBounds();
       path.forEach((pos) => bounds.extend(pos));
       map.fitBounds(bounds);
-      console.log('Mapa ajustado a bounds:', bounds);
     }
-
     redrawPolyline(markers);
+    setLoading(false);
   }, [map, eventCode, deviceID, mode, deviceColor, eventPostalCode]);
 
   const redrawPolyline = (markers) => {
     if (polylineRef.current) {
       polylineRef.current.setMap(null);
     }
-
     const path = markers.map((marker) => ({
       lat: marker.latitude,
       lng: marker.longitude,
     }));
-
     polylineRef.current = new window.google.maps.Polyline({
       path,
       geodesic: true,
@@ -172,7 +178,6 @@ const EditLocation = ({ eventCode, deviceID }) => {
       strokeOpacity: 1.0,
       strokeWeight: 4,
     });
-
     polylineRef.current.setMap(map);
   };
 
@@ -195,7 +200,6 @@ const EditLocation = ({ eventCode, deviceID }) => {
       const handleMapClick = (e) => {
         const { latLng } = e;
         const newPoint = { latitude: latLng.lat(), longitude: latLng.lng() };
-
         const tempMarker = new window.google.maps.Marker({
           position: { lat: newPoint.latitude, lng: newPoint.longitude },
           map,
@@ -209,19 +213,18 @@ const EditLocation = ({ eventCode, deviceID }) => {
             strokeColor: 'black',
           },
         });
-
         tempMarker.addListener('click', () => {
+          console.log("Marcador temporal clicado. Se elimina.");
           tempMarker.setMap(null);
           tempMarkersRef.current = tempMarkersRef.current.filter((marker) => marker !== tempMarker);
-          setNewPoints((prev) => prev.filter((point) => point.latitude !== newPoint.latitude || point.longitude !== newPoint.longitude));
+          setNewPoints((prev) =>
+            prev.filter((point) => point.latitude !== newPoint.latitude || point.longitude !== newPoint.longitude)
+          );
         });
-
         tempMarkersRef.current.push(tempMarker);
         setNewPoints((prev) => [...prev, newPoint]);
       };
-
       map.addListener('click', handleMapClick);
-
       return () => {
         window.google.maps.event.clearListeners(map, 'click');
       };
@@ -230,37 +233,28 @@ const EditLocation = ({ eventCode, deviceID }) => {
 
   const handleInsertPoints = async () => {
     if (newPoints.length === 0) {
-      alert('Debe seleccionar al menos un punto para insertar.');
+      setAlert({ type: 'warning', message: 'Debe seleccionar al menos un punto para insertar.' });
       return;
     }
     try {
       setLoading(true);
       for (const point of newPoints) {
-
-        // Obtén la fecha ajustada a la zona horaria
         const timestamp = DateTime.now().setZone("Europe/Madrid").toISO();
-
-        // Convierte la fecha ISO a un objeto Date
         const adjustedTimestamp = new Date(timestamp);
-
-        console.log('timestamp', timestamp); // Fecha en formato ISO ajustada
-        console.log('adjustedTimestamp', adjustedTimestamp); // Objeto Date válido
-        
         const locationData = { 
           latitude: point.latitude, 
           longitude: point.longitude, 
           accuracy: 0,
           timestamp: adjustedTimestamp,
         };
-        console.log(locationData.timestamp);
         await fetchAddLocation(locationData, eventCode, deviceID);        
       }
       clearTemporaryMarkersAndLines();
-      alert('Puntos insertados correctamente');
+      setAlert({ type: 'success', message: 'Puntos insertados correctamente' });
       await loadLocationMarkers(true);
     } catch (error) {
       console.error('Error al insertar puntos:', error);
-      alert('Error al insertar puntos');
+      setAlert({ type: 'danger', message: 'Error al insertar puntos' });
     } finally {
       setLoading(false);
     }
@@ -268,7 +262,7 @@ const EditLocation = ({ eventCode, deviceID }) => {
 
   const handleDeleteSelectedPoints = async () => {
     if (selectedMarkers.length === 0) {
-      alert('Debe seleccionar al menos un marcador para eliminar.');
+      setAlert({ type: 'warning', message: 'Debe seleccionar al menos un marcador para eliminar.' });
       return;
     }
     try {
@@ -277,27 +271,25 @@ const EditLocation = ({ eventCode, deviceID }) => {
         await fetchDeleteLocation(markerId);
       }
       setSelectedMarkers([]);
-      alert('Puntos eliminados correctamente');
+      setAlert({ type: 'success', message: 'Puntos eliminados correctamente' });
       await loadLocationMarkers(true);
     } catch (error) {
       console.error('Error al eliminar puntos:', error);
-      alert('Error al eliminar puntos');
+      setAlert({ type: 'danger', message: 'Error al eliminar puntos' });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteAllLocations = async () => {
-    try { 
+    try {
       setLoading(true);
-      if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
-        await fetchDeleteLocationsByDeviceAndEvent(eventCode, deviceID);
-        alert('Todas las ubicaciones se han eliminado correctamente.');
-        await loadLocationMarkers(true);
-      }
+      await fetchDeleteLocationsByDeviceAndEvent(eventCode, deviceID);
+      setAlert({ type: 'success', message: 'Todas las ubicaciones se han eliminado correctamente.' });
+      await loadLocationMarkers(true);
     } catch (error) {
       console.error('Error al eliminar todas las ubicaciones:', error);
-      alert('Error al eliminar todas las ubicaciones');
+      setAlert({ type: 'warning', message: 'No hay ubicaciones para eliminar' });
     } finally {
       setLoading(false);
     }
@@ -305,150 +297,47 @@ const EditLocation = ({ eventCode, deviceID }) => {
 
   return (
     <>
-      {loading && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 9999,
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.5em',
-          }}
-        >
-          Cargando...
-        </div>
+      {/* SPINNER DE CARGA */}
+      {loading && <Spinner />}
+
+      {alert && (
+        <Alert 
+          type={alert.type} 
+          message={alert.message} 
+          onClose={() => setAlert(null)} 
+        />
       )}
-      <button
-        onClick={() => setMode((prev) => (prev === 'insert' ? '' : 'insert'))}
-        style={{
-          position: 'absolute',
-          top: '10px',
-          left: '10px',
-          zIndex: 1000,
-          padding: '10px 20px',
-          backgroundColor: mode === 'insert' ? '#007bff' : '#6c757d',
-          color: 'white',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-        }}
-      >
-        Insertar Puntos
-      </button>
-      <button
-        onClick={() => setMode((prev) => (prev === 'delete' ? '' : 'delete'))}
-        style={{
-          position: 'absolute',
-          top: '50px',
-          left: '10px',
-          zIndex: 1000,
-          padding: '10px 20px',
-          backgroundColor: mode === 'delete' ? '#dc3545' : '#6c757d',
-          color: 'white',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-        }}
-      >
-        Eliminar Puntos
-      </button>
-      <button
-        onClick={handleDeleteAllLocations}
-        style={{
-          position: 'absolute',
-          top: '90px',
-          left: '10px',
-          zIndex: 1000,
-          padding: '10px 20px',
-          backgroundColor: '#dc3545',
-          color: 'white',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-        }}
-      >
-        Eliminar Todas
-      </button>
-      {mode === 'insert' && (
-        <button
-          onClick={handleInsertPoints}
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            zIndex: 1000,
-            padding: '10px 20px',
-            backgroundColor: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
+
+      <EditPanel
+        title="Editar Ubicaciones"
+        mode={mode}
+        setMode={setMode}
+        handleInsertPoints={handleInsertPoints}
+        handleDeleteSelectedPoints={handleDeleteSelectedPoints}
+        setShowDeleteAllModal={setShowDeleteAllModal}
+      />
+
+      <PointInfo 
+        selectedPoint={selectedPoint} 
+        mode={mode} 
+        setSelectedPoint={setSelectedPoint} 
+        extended={true}
+      />
+
+      {showDeleteAllModal && (
+        <ConfirmationModal
+          id="deleteAllModal"
+          title="Confirmar eliminación"
+          message="¿Estás seguro de que deseas eliminar todas las ubicaciones? Esta acción no se puede deshacer."
+          onConfirm={async () => {
+            setShowDeleteAllModal(false);
+            await handleDeleteAllLocations();
           }}
-        >
-          Confirmar Inserción
-        </button>
-      )}
-      {mode === 'delete' && (
-        <button
-          onClick={handleDeleteSelectedPoints}
-          style={{
-            position: 'absolute',
-            top: '50px',
-            right: '10px',
-            zIndex: 1000,
-            padding: '10px 20px',
-            backgroundColor: '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
+          onCancel={() => {
+            setShowDeleteAllModal(false);
           }}
-        >
-          Confirmar Eliminación
-        </button>
-      )}
-      {selectedPoint && mode === '' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '150px',
-            left: '10px',
-            backgroundColor: 'white',
-            border: '1px solid #ccc',
-            padding: '10px',
-            borderRadius: '5px',
-            zIndex: 1000,
-            width: '250px',
-          }}
-        >
-          <h4>Información del Punto</h4>
-          <p><strong>ID:</strong> {selectedPoint.id}</p>
-          <p><strong>Latitud:</strong> {selectedPoint.latitude}</p>
-          <p><strong>Longitud:</strong> {selectedPoint.longitude}</p>
-          <p><strong>Precisión:</strong> {selectedPoint.accuracy || 'N/A'}</p>
-          <p><strong>Fecha y Hora:</strong> {new Date(selectedPoint.timestamp).toLocaleString()}</p>
-          <button
-            onClick={() => setSelectedPoint(null)}
-            style={{
-              marginTop: '10px',
-              padding: '5px 10px',
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer',
-            }}
-          >
-            Cerrar
-          </button>
-        </div>
+          extraContent={null}
+        />
       )}
     </>
   );

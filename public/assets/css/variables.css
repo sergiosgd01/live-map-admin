@@ -1,0 +1,44 @@
+/* variables.css */
+:root {
+  /* Texto y fondos */
+  --color-text-main: #17181c;
+  --color-bg-white: #ffffff;
+  --color-text-light: #686d7d;
+  --color-text-muted: rgba(0, 0, 0, 0.5);
+
+  /* Bordes y separadores */
+  --color-border-main: #b7c6d8;
+  --color-border-scroll-track: #cbd2d9;
+  --color-border-scroll-thumb: #dde2e7;
+  --color-border-light: #d3dde9;
+
+  /* Paleta principal */
+  --color-purple-primary: #7920d1;
+  --color-purple-secondary: #6c21dc;
+  --color-primary-hover-light: #d2b5ff;
+  --color-secondary: #7e8c9e;
+  --color-green: #2c998d;
+  --color-red: #e4515e;
+  --color-yellow: #ffb31b;
+  --color-blue: #337ce9;
+  --color-orange: #e1661b;
+  --color-dark: #34424e;
+  
+  /* Tonos adicionales */
+  --color-primary-light: #1553a3; 
+  --color-red-light: #e13d4b; 
+  --color-green-light: #158c7f;
+  --color-yellow-light: #fda901;
+  --color-blue-light: #276dd9;
+
+
+  /* Ejemplo de “box-light” o fondos claros de color */
+  --color-box-yellow: #fff7e8;
+  --color-box-red: #fff2f3;
+  --color-box-green: #e6fffc;
+  --color-box-blue: #eaf2ff;
+  --color-box-purple: #f5ebff;
+  
+  /* Otros que veas repetidos */
+  /* ... */
+}

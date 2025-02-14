@@ -1,7 +1,6 @@
 // src/pages/Events_.jsx
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
+import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { DateTime } from 'luxon';
 
 // Components
@@ -9,6 +8,7 @@ import Layout from '../../components/Layout';
 import EventCard from '../../components/EventCard';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import OptionsModal from '../../components/OptionsModal';
+import Alert from '../../components/Alert';  
 
 // Services
 import { 
@@ -41,54 +41,73 @@ const Events = () => {
   const [confirmModalMessage, setConfirmModalMessage] = useState('');
   const [confirmAction, setConfirmAction] = useState(''); // "resume", "suspend" o "finish"
 
+  // Estados para controlar la visibilidad de los modales personalizados
+  const [showActionConfirmModal, setShowActionConfirmModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+
+  // Estado para las alertas
+  const [alert, setAlert] = useState(null);
+
+  // Ref para el final de la lista de eventos
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    console.log("Alert actualizado:", alert);
+    if (alert) {
+      const timer = setTimeout(() => setAlert(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [alert]);
+
   // Funciones que realizan la acción sin confirmación
   const performResumeEvent = async () => {
     try {
+      console.log("Reanudando el evento:", selectedEvent.code);
       await changeEventStatus(selectedEvent.code, 0);
       const updatedEvent = await fetchEventByCode(selectedEvent.code);
       setSelectedEvent(updatedEvent);
     } catch (err) {
       console.error('Error al reanudar el evento:', err);
-      alert('Error al reanudar el evento: ' + err.message);
+      setAlert({ type: 'danger', message: 'Error al reanudar el evento: ' + err.message });
     }
   };
 
   const performSuspendEvent = async () => {
     try {
+      console.log("Suspendiendo el evento:", selectedEvent.code);
       await changeEventStatus(selectedEvent.code, 1, cancelInfo);
       const updatedEvent = await fetchEventByCode(selectedEvent.code);
       setSelectedEvent(updatedEvent);
     } catch (err) {
       console.error('Error al suspender el evento:', err);
-      alert('Error al suspender el evento: ' + err.message);
+      setAlert({ type: 'danger', message: 'Error al suspender el evento: ' + err.message });
     }
   };
 
   const performFinishEvent = async () => {
     try {
+      console.log("Finalizando el evento:", selectedEvent.code);
       await changeEventStatus(selectedEvent.code, 2);
       const updatedEvent = await fetchEventByCode(selectedEvent.code);
       setSelectedEvent(updatedEvent);
     } catch (err) {
       console.error('Error al finalizar el evento:', err);
-      alert('Error al finalizar el evento: ' + err.message);
+      setAlert({ type: 'danger', message: 'Error al finalizar el evento: ' + err.message });
     }
   };
 
   // Función que abre el modal de confirmación de acción
   const openConfirmModal = (action, title, message) => {
+    console.log("Abriendo modal de acción:", action, title, message);
     setConfirmAction(action);
     setConfirmModalTitle(title);
     setConfirmModalMessage(message);
-    const modalEl = document.getElementById("actionConfirmModal");
-    const modal = new window.bootstrap.Modal(modalEl);
-    modal.show();
+    setShowActionConfirmModal(true);
   };
 
   const handleConfirm = async () => {
-    const actionModalEl = document.getElementById("actionConfirmModal");
-    const actionModal = window.bootstrap.Modal.getInstance(actionModalEl);
-    if (actionModal) actionModal.hide();
+    console.log("Confirmando acción:", confirmAction);
+    setShowActionConfirmModal(false);
 
     if (confirmAction === "resume") {
       await performResumeEvent();
@@ -101,6 +120,7 @@ const Events = () => {
     const updatedEvent = await fetchEventByCode(selectedEvent.code);
     setEvents(events.map(ev => ev._id === updatedEvent._id ? updatedEvent : ev));
 
+    // Se cierra el modal de edición (bootstrap sigue usándose para éste)
     const editModalEl = document.getElementById("editEventModal");
     const editModal = window.bootstrap.Modal.getInstance(editModalEl);
     if (editModal) editModal.hide();
@@ -126,6 +146,7 @@ const Events = () => {
   // Al hacer clic en ver detalles: se asigna el evento seleccionado y se abre el modal emergente de opciones
   const handleViewDetails = (eventItem, e) => {
     e.stopPropagation();
+    console.log("Ver detalles del evento:", eventItem);
     setSelectedEvent(eventItem);
     const modalEl = document.getElementById("optionsModal");
     const modal = new window.bootstrap.Modal(modalEl);
@@ -134,15 +155,15 @@ const Events = () => {
 
   const handleDeleteEvent = (eventItem, e) => {
     e.stopPropagation();
+    console.log("Solicitando eliminación del evento:", eventItem);
     setEventToDelete(eventItem);
-    const modalEl = document.getElementById("deleteConfirmModal");
-    const modal = new window.bootstrap.Modal(modalEl);
-    modal.show();
+    setShowDeleteConfirmModal(true);
   };
 
   // Al hacer clic en editar se abre el modal de edición
   const handleEditEvent = async (eventItem, e) => {
     e.stopPropagation();
+    console.log("Editando el evento:", eventItem);
     setSelectedEvent(eventItem);
     try {
       const orgs = await fetchOrganizations();
@@ -158,15 +179,15 @@ const Events = () => {
   const handleDeleteConfirmed = async () => {
     if (eventToDelete) {
       try {
+        console.log("Confirmando eliminación del evento:", eventToDelete);
         await deleteEvent(eventToDelete.code);
         setEvents(events.filter(ev => ev._id !== eventToDelete._id));
-        const modalEl = document.getElementById("deleteConfirmModal");
-        const modal = window.bootstrap.Modal.getInstance(modalEl);
-        if (modal) modal.hide();
+        setShowDeleteConfirmModal(false);
         setEventToDelete(null);
+        setAlert({ type: 'success', message: 'Evento eliminado correctamente' });
       } catch (err) {
         console.error('Error al eliminar el evento:', err);
-        alert('Error al eliminar el evento: ' + err.message);
+        setAlert({ type: 'danger', message: 'Error al eliminar el evento: ' + err.message });
       }
     }
   };
@@ -209,30 +230,45 @@ const Events = () => {
     const isValid = await validateEventForm();
     if (!isValid) return;
     try {
-      const startDate = DateTime.fromISO(selectedEvent.startDate).setZone('Europe/Madrid').toISO();
-      const endDate = DateTime.fromISO(selectedEvent.endDate).setZone('Europe/Madrid').toISO();
+      const startDate = DateTime.fromISO(selectedEvent.startDate)
+        .setZone('Europe/Madrid')
+        .toISO();
+      const endDate = DateTime.fromISO(selectedEvent.endDate)
+        .setZone('Europe/Madrid')
+        .toISO();
       const adjustedEvent = { ...selectedEvent, startDate, endDate };
 
       if (selectedEvent._id) {
+        // Editar evento
         await updateEvent(selectedEvent.code, adjustedEvent);
         const updatedEvent = await fetchEventByCode(selectedEvent.code);
         setEvents(events.map(ev => ev._id === updatedEvent._id ? updatedEvent : ev));
+        setAlert({ type: 'success', message: 'Evento actualizado correctamente' });
       } else {
+        // Crear evento: en vez de navegar, se añade el evento a la lista
         const createdEvent = await addEvent(adjustedEvent);
-        navigate(`/events/${createdEvent.event.code}`, { replace: true });
+        setEvents(prevEvents => [...prevEvents, createdEvent.event]);
+        setAlert({ type: 'success', message: 'Evento creado correctamente' });
+        // Hacemos scroll hasta el final de la lista
+        setTimeout(() => {
+          if (bottomRef.current) {
+            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 200);
       }
 
+      // Cerrar el modal
       const modalEl = document.getElementById("editEventModal");
       const modal = window.bootstrap.Modal.getInstance(modalEl);
       if (modal) modal.hide();
       setSelectedEvent(null);
     } catch (err) {
       console.error('Error al procesar el evento:', err);
-      alert('Error al procesar el evento: ' + err.message);
+      setAlert({ type: 'danger', message: 'Error al procesar el evento: ' + err.message });
     }
   };
 
-  // Nuevas funciones para editar ubicaciones y ruta utilizando el código del evento seleccionado
+  // Nuevas funciones para editar ubicaciones y rutas
   const handleEditLocation = () => {
     if (!selectedEvent) {
       console.error("No hay evento seleccionado para editar ubicaciones");
@@ -251,9 +287,23 @@ const Events = () => {
 
   if (loading)
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '50vh' }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 9999,
+        }}
+      >
+        <div className="d-flex justify-content-center">
+          <div className="spinner-border text-yellow" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
         </div>
       </div>
     );
@@ -262,7 +312,6 @@ const Events = () => {
   return (
     <>
       <Layout>
-        {/* Encabezado interno de la página */}
         <div className="main-header d-flex align-items-center justify-content-between position-relative">
           <div className="d-flex align-items-center justify-content-center">
             <div className="page-icon pe-3">
@@ -274,6 +323,13 @@ const Events = () => {
           </div>
         </div>
         <div className="content-wrapper" style={{ padding: '20px' }}>
+          {alert && (
+            <Alert 
+              type={alert.type} 
+              message={alert.message} 
+              onClose={() => setAlert(null)} 
+            />
+          )}
           {events.length > 0 ? (
             <div className="row gx-3 justify-content-center align-items-stretch">
               {events.map(event => (
@@ -285,6 +341,8 @@ const Events = () => {
                   onDelete={(e) => handleDeleteEvent(event, e)}
                 />
               ))}
+              {/* Elemento al final para hacer scroll */}
+              <div ref={bottomRef} />
             </div>
           ) : (
             <p style={{ textAlign: 'center' }}>
@@ -303,9 +361,14 @@ const Events = () => {
                 endDate: '',
                 image: '',
                 icon: '',
-                organizationCode: organizationCode,
+                organizationCode: organizationCode, 
               });
               setCancelInfo('');
+              // Cargamos todas las organizaciones para el select
+              fetchOrganizations()
+                .then(orgs => setEventOrganizations(orgs))
+                .catch(err => console.error("Error al cargar organizaciones:", err));
+                
               const modalEl = document.getElementById("editEventModal");
               if (modalEl) {
                 const formEl = modalEl.querySelector("form");
@@ -584,38 +647,50 @@ const Events = () => {
         </div>
 
         {/* Modal de confirmación de acción */}
-        <ConfirmationModal
-          id="actionConfirmModal"
-          title={confirmModalTitle}
-          message={confirmModalMessage}
-          onConfirm={handleConfirm}
-          onCancel={() => {}}
-          extraContent={
-            confirmAction === "suspend" && (
-              <>
-                <label htmlFor="cancelInfo">Información de Cancelación:</label>
-                <textarea
-                  id="cancelInfo"
-                  className="form-control"
-                  value={cancelInfo}
-                  onChange={(e) => setCancelInfo(e.target.value)}
-                />
-              </>
-            )
-          }
-        />
+        {showActionConfirmModal && (
+          <ConfirmationModal
+            id="actionConfirmModal"
+            title={confirmModalTitle}
+            message={confirmModalMessage}
+            onConfirm={handleConfirm}
+            onCancel={() => {
+              console.log("Se canceló la acción");
+              setShowActionConfirmModal(false);
+            }}
+            extraContent={
+              confirmAction === "suspend" && (
+                <>
+                  <label htmlFor="cancelInfo">Información de Cancelación:</label>
+                  <textarea
+                    id="cancelInfo"
+                    className="form-control"
+                    value={cancelInfo}
+                    onChange={(e) => setCancelInfo(e.target.value)}
+                  />
+                </>
+              )
+            }
+          />
+        )}
 
         {/* Modal de confirmación de eliminación de evento */}
-        <ConfirmationModal
-          id="deleteConfirmModal"
-          title="Confirmar Eliminación"
-          message={`¿Estás seguro de que deseas eliminar el evento ${eventToDelete?.name}?`}
-          onConfirm={handleDeleteConfirmed}
-          onCancel={() => {
-            // Puedes agregar lógica adicional al cancelar si es necesario
-          }}
-          extraContent={null}
-        />
+        {showDeleteConfirmModal && (
+          <ConfirmationModal
+            id="deleteConfirmModal"
+            title="Confirmar Eliminación"
+            message={`¿Estás seguro de que deseas eliminar el evento ${eventToDelete?.name}?`}
+            onConfirm={async () => {
+              console.log("Confirmación para eliminar evento");
+              await handleDeleteConfirmed();
+              setShowDeleteConfirmModal(false);
+            }}
+            onCancel={() => {
+              console.log("Se canceló la eliminación del evento");
+              setShowDeleteConfirmModal(false);
+            }}
+            extraContent={null}
+          />
+        )}
       </Layout>
     </>
   );

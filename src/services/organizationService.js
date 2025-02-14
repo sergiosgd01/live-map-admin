@@ -71,7 +71,7 @@ export const addOrganization = async (organization) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ name: organization.name }),
+      body: JSON.stringify({ name: organization.name, image: organization.image }),
     });
 
     if (!response.ok) {

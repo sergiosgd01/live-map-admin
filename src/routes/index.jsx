@@ -16,7 +16,7 @@ import EditRoutePage from "../pages/event/route/EditRoutePage";
 import LocationPage from "../pages/event/location/LocationPage";
 import EditLocationPage from "../pages/event/location/EditLocationPage";
 
-import RawLocations_ from "../pages/event/location/RawLocations_";
+import RawLocations from "../pages/event/location/RawLocations";
 
 import ServicePage from "../pages/event/service/ServicePage";
 
@@ -44,7 +44,7 @@ const AppRoutes = () => (
         <Route path="/events/:eventCode/location" element={<LocationPage />} />
         <Route path="/events/:eventCode/location/:deviceID/edit" element={<EditLocationPage />} />
 
-        <Route path="/events/:eventCode/raw-locations" element={<RawLocations_ />} />
+        <Route path="/events/:eventCode/raw-locations" element={<RawLocations />} />
 
         <Route path="/events/:eventCode/service" element={<ServicePage />} />
 

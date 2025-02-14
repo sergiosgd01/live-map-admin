@@ -1,10 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-// Components
-import { useMap } from "../../../components/SharedMap";
-
-// Services
+// Servicios
 import { fetchDevicesByEventCode } from "../../../services/deviceService";
 import { fetchLocationsByDeviceIdEventCode } from "../../../services/locationService";
 import { fetchEventByCode } from "../../../services/eventService";
@@ -12,27 +9,40 @@ import { fetchEventByCode } from "../../../services/eventService";
 // Utils
 import { centerMapBasedOnMarkers } from "../../../utils/mapCentering";
 
-const Location = ({ eventCode }) => {
+// Components
+import { useMap } from "../../../components/SharedMap";
+import DevicePanel from "../../../components/DevicePanel";
+import Spinner from "../../../components/Spinner";
+import TogglePanelButton from "../../../components/TogglePanelButton";
+
+function Location({ eventCode }) {
   const map = useMap();
   const navigate = useNavigate();
 
+  // Refs para guardar marcadores y polilíneas
   const deviceMarkersRef = useRef({});
   const devicePolylinesRef = useRef({});
 
+  // Estados
   const [devices, setDevices] = useState([]);
   const [deviceLocations, setDeviceLocations] = useState({});
   const [eventPostalCode, setEventPostalCode] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Estado para mostrar/ocultar el panel lateral
+  const [showPanel, setShowPanel] = useState(false);
+  // Estado para guardar el dispositivo filtrado (cuando se muestra "Ver")
+  const [selectedDevice, setSelectedDevice] = useState(null);
+
   useEffect(() => {
     if (!map || !eventCode) return;
 
     const loadDeviceMarkers = async () => {
-      setLoading(true); 
+      setLoading(true);
       try {
+        // 1. Fetch de datos del evento
         const eventData = await fetchEventByCode(eventCode);
         let postalCode = null;
-
         if (eventData) {
           postalCode = eventData.postalCode;
           setEventPostalCode(postalCode);
@@ -40,20 +50,21 @@ const Location = ({ eventCode }) => {
           console.warn(`Evento con código ${eventCode} no encontrado.`);
         }
 
-        // Limpia los marcadores y polilíneas anteriores
+        // 2. Limpiar cualquier marcador o polilínea previa
         Object.values(deviceMarkersRef.current)
           .flat()
           .forEach((marker) => marker.setMap(null));
-        Object.values(devicePolylinesRef.current).forEach((polyline) =>
-          polyline.setMap(null)
+        Object.values(devicePolylinesRef.current).forEach((poly) =>
+          poly.setMap(null)
         );
-
         deviceMarkersRef.current = {};
         devicePolylinesRef.current = {};
 
+        // 3. Fetch de todos los dispositivos asociados al evento
         const devicesResponse = await fetchDevicesByEventCode(eventCode);
         setDevices(devicesResponse);
 
+        // 4. Para cada dispositivo, traemos sus ubicaciones
         const locationsByDevice = await Promise.all(
           devicesResponse.map(async (device) => {
             const locs = await fetchLocationsByDeviceIdEventCode(
@@ -63,7 +74,6 @@ const Location = ({ eventCode }) => {
             return { deviceID: device.deviceID, locations: locs };
           })
         );
-
         const newDeviceLocations = Object.fromEntries(
           locationsByDevice.map(({ deviceID, locations }) => [
             deviceID,
@@ -72,24 +82,26 @@ const Location = ({ eventCode }) => {
         );
         setDeviceLocations(newDeviceLocations);
 
+        // 5. Dibujar marcadores y polilíneas
         const bounds = new window.google.maps.LatLngBounds();
         let anyLocation = false;
-
         locationsByDevice.forEach(({ deviceID, locations }) => {
           const deviceColor =
             devicesResponse.find((d) => d.deviceID === deviceID)?.color ||
             "#000000";
-
           const path = locations.map((loc) => ({
             lat: loc.latitude,
             lng: loc.longitude,
           }));
-
+          // Marcador en la última ubicación
           const markers = [];
           if (locations.length > 0) {
             const lastLocation = locations[locations.length - 1];
             const lastMarker = new window.google.maps.Marker({
-              position: { lat: lastLocation.latitude, lng: lastLocation.longitude },
+              position: {
+                lat: lastLocation.latitude,
+                lng: lastLocation.longitude,
+              },
               map,
               icon: {
                 path: window.google.maps.SymbolPath.CIRCLE,
@@ -102,9 +114,9 @@ const Location = ({ eventCode }) => {
             });
             markers.push(lastMarker);
           }
-
           deviceMarkersRef.current[deviceID] = markers;
 
+          // Dibujar polyline si hay más de 1 ubicación
           if (path.length > 1) {
             const polyline = new window.google.maps.Polyline({
               path,
@@ -117,29 +129,33 @@ const Location = ({ eventCode }) => {
             devicePolylinesRef.current[deviceID] = polyline;
           }
 
+          // Ajustar bounds
           locations.forEach((loc) => {
             bounds.extend({ lat: loc.latitude, lng: loc.longitude });
             anyLocation = true;
           });
         });
 
+        // 6. Centrar el mapa
         if (anyLocation) {
           map.fitBounds(bounds);
         } else {
           centerMapBasedOnMarkers(map, false, postalCode);
         }
 
-        setLoading(false); // Finaliza la carga
+        setLoading(false);
       } catch (error) {
-        console.error("Error al cargar los marcadores de dispositivos:", error);
-        setLoading(false); // Finaliza la carga incluso en caso de error
+        console.error("Error al cargar marcadores:", error);
+        setLoading(false);
       }
     };
 
     loadDeviceMarkers();
   }, [map, eventCode]);
 
-  const showDeviceLocations = async (deviceID) => {
+  /** Mostrar solo ubicaciones de un dispositivo. */
+  const showDeviceLocations = (deviceID) => {
+    setSelectedDevice(deviceID);
     Object.keys(deviceMarkersRef.current).forEach((id) => {
       const show = id === deviceID;
       deviceMarkersRef.current[id]?.forEach((marker) => marker.setVisible(show));
@@ -147,17 +163,14 @@ const Location = ({ eventCode }) => {
         devicePolylinesRef.current[id].setVisible(show);
       }
     });
-
     const newBounds = new window.google.maps.LatLngBounds();
     let anyLocation = false;
-
     if (deviceLocations[deviceID]) {
       deviceLocations[deviceID].forEach((loc) => {
         newBounds.extend({ lat: loc.latitude, lng: loc.longitude });
         anyLocation = true;
       });
     }
-
     if (anyLocation) {
       map.fitBounds(newBounds);
     } else {
@@ -165,24 +178,23 @@ const Location = ({ eventCode }) => {
     }
   };
 
+  /** Mostrar todas las ubicaciones. */
   const showAllLocations = () => {
+    setSelectedDevice(null);
     Object.keys(deviceMarkersRef.current).forEach((id) => {
       deviceMarkersRef.current[id]?.forEach((marker) => marker.setVisible(true));
       if (devicePolylinesRef.current[id]) {
         devicePolylinesRef.current[id].setVisible(true);
       }
     });
-
     const newBounds = new window.google.maps.LatLngBounds();
     let anyLocation = false;
-
     Object.keys(deviceLocations).forEach((devId) => {
       deviceLocations[devId].forEach((loc) => {
         newBounds.extend({ lat: loc.latitude, lng: loc.longitude });
         anyLocation = true;
       });
     });
-
     if (anyLocation) {
       map.fitBounds(newBounds);
     } else {
@@ -190,171 +202,36 @@ const Location = ({ eventCode }) => {
     }
   };
 
+  /** Ir a la edición de ubicaciones de un dispositivo. */
   const handleEditLocations = (deviceID) => {
     navigate(`/events/${eventCode}/location/${deviceID}/edit`);
   };
 
   return (
     <>
-      {loading && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "rgba(0, 0, 0, 0.6)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 9999,
-          }}
-        >
-          <div
-            className="spinner"
-            style={{
-              border: "4px solid rgba(255, 255, 255, 0.3)",
-              borderTop: "4px solid white",
-              borderRadius: "50%",
-              width: "40px",
-              height: "40px",
-              animation: "spin 1s linear infinite",
-            }}
-          ></div>
-        </div>
-      )}
+      {/* SPINNER DE CARGA */}
+      {loading && <Spinner />}
+
+      {/* BOTÓN PARA MOSTRAR/OCULTAR PANEL */}
       {!loading && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: "10px",
-            left: "10px",
-            zIndex: 9999,
-            padding: "10px",
-            borderRadius: "5px",
-            backgroundColor: "rgba(0, 51, 102, 0.8)",
-            color: "white",
-            maxWidth: "300px",
-            overflowY: "auto",
-            maxHeight: "90vh",
-          }}
-        >
-          {devices.length === 1 ? (
-            <div>
-              <p>
-                <strong>Nombre:</strong> {devices[0].name}
-              </p>
-              <p>
-                <strong>Color:</strong>{" "}
-                <span
-                  style={{
-                    backgroundColor: devices[0].color,
-                    padding: "5px 10px",
-                    borderRadius: "5px",
-                    color: "#fff",
-                  }}
-                >
-                  {devices[0].color}
-                </span>
-              </p>
-              <button
-                onClick={() => handleEditLocations(devices[0].deviceID)}
-                style={{
-                  padding: "5px 10px",
-                  borderRadius: "5px",
-                  backgroundColor: "#28a745",
-                  color: "white",
-                  border: "none",
-                  cursor: "pointer",
-                }}
-              >
-                Editar Ubicaciones
-              </button>
-            </div>
-          ) : (
-            <>
-              <h2 style={{ marginTop: 0 }}>Dispositivos</h2>
-              {devices.length === 0 ? (
-                <p>No hay dispositivos para este evento.</p>
-              ) : (
-                <ul style={{ listStyleType: "none", padding: 0 }}>
-                  {devices.map((device) => (
-                    <li
-                      key={device._id}
-                      style={{
-                        marginBottom: "10px",
-                        borderBottom: "1px solid #ccc",
-                        paddingBottom: "10px",
-                      }}
-                    >
-                      <p>
-                        <strong>Nombre:</strong> {device.name}
-                      </p>
-                      <p>
-                        <strong>Color:</strong>{" "}
-                        <span
-                          style={{
-                            backgroundColor: device.color,
-                            padding: "5px 10px",
-                            borderRadius: "5px",
-                            color: "#fff",
-                          }}
-                        >
-                          {device.color}
-                        </span>
-                      </p>
-                      <button
-                        onClick={() => showDeviceLocations(device.deviceID)}
-                        style={{
-                          marginRight: "10px",
-                          padding: "5px 10px",
-                          borderRadius: "5px",
-                          backgroundColor: "#007bff",
-                          color: "white",
-                          border: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Ver Ubicaciones
-                      </button>
-                      <button
-                        onClick={() => handleEditLocations(device.deviceID)}
-                        style={{
-                          padding: "5px 10px",
-                          borderRadius: "5px",
-                          backgroundColor: "#28a745",
-                          color: "white",
-                          border: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Editar Ubicaciones
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <button
-                onClick={showAllLocations}
-                style={{
-                  padding: "5px 10px",
-                  borderRadius: "5px",
-                  backgroundColor: "#ffc107",
-                  color: "black",
-                  border: "none",
-                  cursor: "pointer",
-                  marginTop: "10px",
-                }}
-              >
-                Mostrar Todos
-              </button>
-            </>
-          )}
-        </div>
+        <TogglePanelButton
+          showPanel={showPanel}
+          togglePanel={() => setShowPanel((prev) => !prev)}
+        />
+      )}
+
+      {/* PANEL DE DISPOSITIVOS (Extraído en DevicePanel.jsx) */}
+      {showPanel && !loading && (
+        <DevicePanel
+          devices={devices}
+          showDevice={showDeviceLocations}
+          handleEdit={handleEditLocations}
+          showAll={showAllLocations}
+          selectedDevice={selectedDevice}
+        />
       )}
     </>
   );
-};
+}
 
 export default Location;
