@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// Components
 import { useMap } from '../../../components/SharedMap';
+import Alert from '../../../components/Alert';
+import ConfirmationModal from '../../../components/ConfirmationModal';
+import Spinner from '../../../components/Spinner';
 
-// Services
 import {
   fetchService,
   fetchCreateService,
@@ -14,181 +14,143 @@ import {
 import { fetchServiceTypes } from '../../../services/serviceTypeService';
 import { fetchEventByCode } from '../../../services/eventService';
 
-// Utils
 import { centerMapBasedOnMarkers } from '../../../utils/mapCentering';
 
-const Service = ({ eventCode }) => {
-  const map = useMap(); // Instancia del mapa de Google Maps
+const Service_ = ({ eventCode }) => {
+  const map = useMap();
   const navigate = useNavigate();
-  const markersRef = useRef([]); // Referencia para almacenar los marcadores
 
+  // Refs para los marcadores
+  const markersRef = useRef([]);
+
+  // Estados
   const [serviceTypes, setServiceTypes] = useState([]);
   const [selectedType, setSelectedType] = useState(null);
-  const [newService, setNewService] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [newService, setNewService] = useState(null); // para insertar
+  const [serviceToDelete, setServiceToDelete] = useState(null); // para eliminar uno
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false); // para eliminar todos
+  const [showOptionsModal, setShowOptionsModal] = useState(false); // modal de opciones
+  const [loading, setLoading] = useState(true); // loading inicia en true para mostrar spinner desde el inicio
+  const [alert, setAlert] = useState(null);
   const [isReady, setIsReady] = useState(false);
-  const [mode, setMode] = useState('');   
+  const [eventPostalCode, setEventPostalCode] = useState(null);
 
-  // Función para limpiar todos los marcadores del mapa
+  // Autooculta la alerta después de 3 segundos
+  useEffect(() => {
+    if (alert) {
+      const timer = setTimeout(() => setAlert(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [alert]);
+
+  // Limpia los marcadores existentes en el mapa
   const clearMarkers = () => {
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
   };
 
-  // Función para cargar los servicios desde el backend y mostrarlos en el mapa
-  const loadServices = async () => {
-    if (!map || !serviceTypes.length) {
-      console.warn(
-        'Mapa o tipos de servicios aún no están listos, retrasando carga de servicios.'
-      );
-      return;
-    }
-  
+  // Cargar datos iniciales: tipos de servicio y postalCode del evento
+  const loadInitialData = useCallback(async () => {
     try {
       const eventData = await fetchEventByCode(eventCode);
-      let postalCode = null;
-  
       if (eventData) {
-        postalCode = eventData.postalCode;
+        setEventPostalCode(eventData.postalCode);
       }
-    
-      const existingServices = await fetchService(eventCode); // Obtener servicios desde el backend
-  
-      clearMarkers(); // Limpiar marcadores existentes
-  
-      if (existingServices.length > 0) {
-        // Si existen servicios, creamos los marcadores y ajustamos el mapa
-        existingServices.forEach((service) => {
-          const serviceType = serviceTypes.find(
-            (type) => type.type === service.type
-          );
-  
-          // Definir el ícono del marcador
-          const icon = serviceType?.image
-            ? {
-                url: serviceType.image,
-                scaledSize: new window.google.maps.Size(30, 30),
-              }
-            : {
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 6,
-                fillColor: '#FF0000',
-                fillOpacity: 1,
-                strokeWeight: 1,
-                strokeColor: '#000',
-              };
-  
-          // Crear el marcador
-          const marker = new window.google.maps.Marker({
-            position: { lat: service.latitude, lng: service.longitude },
-            map,
-            title: serviceType ? serviceType.name : 'Servicio',
-            icon: icon,
-          });
-  
-          if (mode === 'delete') {
-            marker.addListener('click', async () => {
-              if (
-                window.confirm(
-                  '¿Estás seguro de que deseas eliminar este servicio?'
-                )
-              ) {
-                try {
-                  await fetchDeleteService(service._id);
-                  alert('Servicio eliminado correctamente.');
-                  loadServices();
-                } catch (error) {
-                  console.error('Error al eliminar el servicio:', error);
-                  alert(
-                    'Error al eliminar el servicio. Inténtelo nuevamente.'
-                  );
-                }
-              }
-            });
-          }
-  
-          markersRef.current.push(marker);
+      const types = await fetchServiceTypes();
+      setServiceTypes(types);
+      setIsReady(true);
+    } catch (err) {
+      console.error('Error al cargar datos iniciales:', err);
+    }
+  }, [eventCode]);
+
+  // Cargar los servicios y mostrarlos en el mapa
+  const loadServiceMarkers = useCallback(async (shouldCenter = false) => {
+    if (!map || !isReady) return;
+    clearMarkers();
+    try {
+      const services = await fetchService(eventCode);
+      if (!services || services.length === 0) {
+        if (shouldCenter) {
+          centerMapBasedOnMarkers(map, false, eventPostalCode);
+        }
+        return;
+      }
+      const bounds = new window.google.maps.LatLngBounds();
+
+      services.forEach((service) => {
+        const serviceType = serviceTypes.find((type) => type.type === service.type);
+        let icon;
+        if (serviceType && serviceType.image) {
+          icon = {
+            url: serviceType.image,
+            scaledSize: new window.google.maps.Size(30, 30),
+          };
+        } else {
+          icon = {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 6,
+            fillColor: '#FF0000',
+            fillOpacity: 1,
+            strokeWeight: 1,
+            strokeColor: '#000',
+          };
+        }
+
+        const marker = new window.google.maps.Marker({
+          position: { lat: service.latitude, lng: service.longitude },
+          map,
+          title: serviceType ? serviceType.name : 'Servicio',
+          icon: icon,
         });
-  
-        const bounds = new window.google.maps.LatLngBounds();
-        existingServices.forEach((service) => {
-          bounds.extend({ lat: service.latitude, lng: service.longitude });
+
+        // Al hacer clic en el marcador, se muestra el modal de eliminación individual
+        marker.addListener('click', (e) => {
+          if (e.stopPropagation) e.stopPropagation();
+          setServiceToDelete(service);
         });
+
+        markersRef.current.push(marker);
+        bounds.extend({ lat: service.latitude, lng: service.longitude });
+      });
+
+      if (shouldCenter) {
         map.fitBounds(bounds);
-      } else {
-        centerMapBasedOnMarkers(map, false, postalCode);
-        console.warn('No hay servicios para mostrar en el mapa.');
       }
     } catch (error) {
       console.error('Error al cargar los servicios:', error);
     }
-  };
-  
-  // Función para eliminar todos los servicios
-  const handleDeleteAllServices = async () => {
-    if (
-      !window.confirm(
-        '¿Estás seguro de que deseas eliminar todos los servicios? Esta acción no se puede deshacer.'
-      )
-    ) {
-      return;
-    }
+  }, [map, isReady, eventCode, serviceTypes, eventPostalCode]);
 
-    try {
-      await fetchDeleteAllServices(eventCode);
-      alert('Todos los servicios han sido eliminados correctamente.');
-      loadServices(); // Recargar servicios después de eliminar
-    } catch (error) {
-      console.error('Error al eliminar todos los servicios:', error);
-      alert('Error al eliminar todos los servicios. Inténtelo nuevamente.');
-    }
-  };
-
-  // Cargar los tipos de servicios al montar el componente
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const types = await fetchServiceTypes();
-        setServiceTypes(types);
-        setIsReady(true);
-      } catch (error) {
-        console.error('Error al cargar los datos iniciales:', error);
-      }
-    };
-
     loadInitialData();
-  }, []);
-
-  // Cargar servicios cuando el mapa esté listo y los tipos de servicios se hayan cargado
+  }, [loadInitialData]);
+  
   useEffect(() => {
     if (map && isReady) {
-      loadServices();
+      setLoading(true);
+      loadServiceMarkers(true).finally(() => setLoading(false));
     }
-  }, [map, isReady, mode]);
+  }, [map, isReady]);  
 
-  // Añadir listener para manejar inserción de nuevos servicios en el mapa
+  // Listener para insertar nuevos servicios en el mapa (clic en área sin marcador)
   useEffect(() => {
-    if (!map || mode !== 'insert') return;
-
+    if (!map) return;
     const handleMapClick = (e) => {
-      const { latLng } = e;
-      setNewService({ latitude: latLng.lat(), longitude: latLng.lng() });
+      setNewService({ latitude: e.latLng.lat(), longitude: e.latLng.lng() });
     };
-
     map.addListener('click', handleMapClick);
-
     return () => {
       window.google.maps.event.clearListeners(map, 'click');
     };
-  }, [map, mode]);
+  }, [map]);
 
   // Función para insertar un nuevo servicio
   const handleServiceInsert = async () => {
     if (!newService || !selectedType) {
-      alert('Debe seleccionar un tipo de servicio y una ubicación en el mapa.');
+      setAlert({ type: 'warning', message: 'Debe seleccionar un tipo de servicio.' });
       return;
     }
-
     try {
       setLoading(true);
       await fetchCreateService(
@@ -197,191 +159,242 @@ const Service = ({ eventCode }) => {
         newService.longitude,
         selectedType
       );
-      setLoading(false);
-      alert('Servicio insertado correctamente.');
+      setAlert({ type: 'success', message: 'Servicio insertado correctamente.' });
       setNewService(null);
       setSelectedType(null);
-      loadServices(); // Recargar servicios después de insertar
+      await loadServiceMarkers(true);
     } catch (error) {
-      setLoading(false);
       console.error('Error al insertar el servicio:', error);
-      alert('Error al insertar el servicio. Inténtelo nuevamente.');
+      setAlert({ type: 'danger', message: 'Error al insertar el servicio. Inténtelo nuevamente.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para eliminar un servicio individual
+  const handleServiceDelete = async () => {
+    if (!serviceToDelete) return;
+    try {
+      setLoading(true);
+      await fetchDeleteService(serviceToDelete._id);
+      setAlert({ type: 'success', message: 'Servicio eliminado correctamente.' });
+      setServiceToDelete(null);
+      await loadServiceMarkers(true);
+    } catch (error) {
+      console.error('Error al eliminar el servicio:', error);
+      setAlert({ type: 'danger', message: 'Error al eliminar el servicio. Inténtelo nuevamente.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para eliminar todos los servicios
+  const handleDeleteAllServices = async () => {
+    try {
+      setLoading(true);
+      const result = await fetchDeleteAllServices(eventCode);
+      if (result && result.noServices) {
+        setAlert({ type: 'warning', message: 'No hay servicios para eliminar.' });
+      } else {
+        setAlert({ type: 'success', message: 'Todos los servicios han sido eliminados correctamente.' });
+      }
+      await loadServiceMarkers(true);
+    } catch (error) {
+      console.error('Error al eliminar todos los servicios:', error);
+      setAlert({ type: 'danger', message: 'Error al eliminar todos los servicios.' });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <>
-      {/* Panel de Botones en la esquina inferior izquierda */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '10px',
-          left: '10px',
-          zIndex: 9999,
-          padding: '10px',
-          borderRadius: '5px',
-          backgroundColor: 'rgba(0, 51, 102, 0.8)',
-          color: 'white',
-          maxWidth: '300px',
-          overflowY: 'auto',
-          maxHeight: '90vh',
-        }}
-      >
-        <h2 style={{ marginTop: 0, fontSize: '16px', textAlign: 'center' }}>
-          Opciones
-        </h2>
+      {loading && <Spinner />}
+      {alert && (
+        <Alert 
+          type={alert.type} 
+          message={alert.message} 
+          onClose={() => setAlert(null)} 
+        />
+      )}
 
-        <button
-          onClick={() => setMode((prev) => (prev === 'insert' ? '' : 'insert'))}
-          style={{
-            width: '100%',
-            padding: '10px',
-            marginBottom: '10px',
-            backgroundColor: mode === 'insert' ? '#007bff' : '#6c757d',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-          }}
-        >
-          {mode === 'insert' ? 'Cancelar Inserción' : 'Insertar Servicio'}
-        </button>
-
-        <button
-          onClick={() => setMode((prev) => (prev === 'delete' ? '' : 'delete'))}
-          style={{
-            width: '100%',
-            padding: '10px',
-            marginBottom: '10px',
-            backgroundColor: mode === 'delete' ? '#dc3545' : '#6c757d',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-          }}
-        >
-          {mode === 'delete' ? 'Cancelar Eliminación' : 'Eliminar Servicio'}
-        </button>
-
-        <button
-          onClick={handleDeleteAllServices}
-          style={{
-            width: '100%',
-            padding: '10px',
-            marginBottom: '10px',
-            backgroundColor: '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-          }}
-        >
-          Eliminar Todos los Servicios
-        </button>
-
-        <button
-          onClick={() => navigate(`/services`)}
-          style={{
-            width: '100%',
-            padding: '10px',
-            backgroundColor: '#28a745',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-          }}
-        >
-          Administrar Tipos de Servicio
-        </button>
-      </div>
-
-      {/* Modal de Inserción */}
-      {mode === 'insert' && newService && (
+      {/* Modal para insertar un nuevo servicio al hacer clic en el mapa */}
+      {newService && (
         <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 2000,
-          }}
+          className="modal fade show"
+          style={{ display: 'block' }}
+          id="insertServiceModal"
+          data-bs-backdrop="static"
+          data-bs-keyboard="false"
+          tabIndex="-1"
+          aria-labelledby="insertServiceModalLabel"
+          aria-modal="true"
+          role="dialog"
         >
-          <div
-            style={{
-              backgroundColor: 'white',
-              padding: '20px',
-              borderRadius: '5px',
-              width: '300px',
-            }}
-          >
-            <h3>Insertar Servicio</h3>
-            <p>
-              <strong>Latitud:</strong> {newService?.latitude}
-            </p>
-            <p>
-              <strong>Longitud:</strong> {newService?.longitude}
-            </p>
-
-            <label htmlFor="serviceTypeModal">
-              Seleccionar Tipo de Servicio:
-            </label>
-            <select
-              id="serviceTypeModal"
-              value={selectedType || ''}
-              onChange={(e) => setSelectedType(parseInt(e.target.value, 10))}
-              style={{ width: '100%', marginBottom: '10px' }}
-            >
-              <option value="" disabled>
-                Selecciona un tipo
-              </option>
-              {serviceTypes.map((type) => (
-                <option key={type._id} value={type.type}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={handleServiceInsert}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '10px',
-                backgroundColor: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {loading ? 'Cargando...' : 'Insertar Servicio'}
-            </button>
-
-            <button
-              onClick={() => setNewService(null)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                marginTop: '10px',
-                backgroundColor: '#dc3545',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-              }}
-            >
-              Cancelar
-            </button>
+          <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleServiceInsert();
+                }}
+                className="needs-validation"
+                noValidate
+              >
+                <div className="modal-header">
+                  <h5 className="modal-title" id="insertServiceModalLabel">
+                    Insertar Servicio
+                  </h5>
+                  <button
+                    type="button"
+                    className="btn btn-close"
+                    onClick={() => setNewService(null)}
+                    aria-label="Close"
+                  ></button>
+                </div>
+                <div
+                  className="modal-body"
+                  style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto' }}
+                >
+                  <p>
+                    <strong>Latitud:</strong> {newService.latitude}
+                  </p>
+                  <p>
+                    <strong>Longitud:</strong> {newService.longitude}
+                  </p>
+                  <div className="mb-3">
+                    <label htmlFor="serviceTypeModal" className="form-label">
+                      Seleccionar Tipo de Servicio:
+                    </label>
+                    <select
+                      id="serviceTypeModal"
+                      className="form-select"
+                      value={selectedType || ''}
+                      onChange={(e) => setSelectedType(e.target.value)}
+                      required
+                    >
+                      <option value="" disabled>
+                        Selecciona un tipo
+                      </option>
+                      {serviceTypes.map((type) => (
+                        <option key={type._id} value={type.type}>
+                          {type.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => setNewService(null)}
+                  >
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={loading}>
+                    {loading ? 'Cargando...' : 'Insertar Servicio'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Modal para eliminar un servicio individual */}
+      {serviceToDelete && (
+        <ConfirmationModal
+          id="deleteServiceModal"
+          title="Confirmar eliminación"
+          message="¿Estás seguro de que deseas eliminar este servicio?"
+          onConfirm={handleServiceDelete}
+          onCancel={() => setServiceToDelete(null)}
+          extraContent={null}
+        />
+      )}
+
+      {/* Modal para eliminar todos los servicios */}
+      {showDeleteAllModal && (
+        <ConfirmationModal
+          id="deleteAllModal"
+          title="Confirmar eliminación"
+          message="¿Estás seguro de que deseas eliminar todos los servicios? Esta acción no se puede deshacer."
+          onConfirm={async () => {
+            setShowDeleteAllModal(false);
+            await handleDeleteAllServices();
+          }}
+          onCancel={() => setShowDeleteAllModal(false)}
+          extraContent={null}
+        />
+      )}
+
+      {/* Modal de opciones: se muestra al pulsar el botón circular */}
+      {showOptionsModal && (
+        <div
+          className="modal fade show"
+          style={{ display: 'block' }}
+          id="optionsModal"
+          data-bs-backdrop="static"
+          data-bs-keyboard="false"
+          tabIndex="-1"
+          aria-labelledby="optionsModalLabel"
+          aria-modal="true"
+          role="dialog"
+        >
+          <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title" id="optionsModalLabel">Opciones</h5>
+                <button
+                  type="button"
+                  className="btn btn-close"
+                  onClick={() => setShowOptionsModal(false)}
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div className="modal-body">
+                <button
+                  className="btn btn-danger w-100 mb-2"
+                  onClick={() => {
+                    setShowOptionsModal(false);
+                    setShowDeleteAllModal(true);
+                  }}
+                >
+                  Eliminar Todos los Servicios
+                </button>
+                <button
+                  className="btn btn-success w-100"
+                  onClick={() => {
+                    setShowOptionsModal(false);
+                    navigate(`/services`);
+                  }}
+                >
+                  Administrar Tipos de Servicio
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Botón circular en la esquina inferior izquierda para abrir el modal de opciones */}
+      <button
+        onClick={() => setShowOptionsModal(true)}
+        className="btn btn-primary rounded-circle"
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '20px',
+          width: '50px',
+          height: '50px',
+          fontSize: '24px',
+        }}
+      >
+        &#8942;
+      </button>
     </>
   );
 };
 
-export default Service;
+export default Service_;

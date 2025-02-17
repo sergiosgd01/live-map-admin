@@ -20,8 +20,7 @@ import RawLocations from "../pages/event/location/RawLocations";
 
 import ServicePage from "../pages/event/service/ServicePage";
 
-import AddServiceType from "../pages/event/service/AddServiceType";
-import ServiceTypeList from "../pages/event/service/ServiceTypeList";
+import ServiceType from "../pages/event/service/ServiceType";
 
 import Device from "../pages/event/device/Device";
 import EditDevice from "../pages/event/device/EditDevice";
@@ -48,8 +47,7 @@ const AppRoutes = () => (
 
         <Route path="/events/:eventCode/service" element={<ServicePage />} />
 
-        <Route path="/services" element={<ServiceTypeList />} />
-        <Route path="/services/add-type" element={<AddServiceType />} />
+        <Route path="/services" element={<ServiceType />} />
 
         <Route path="/events/:eventCode/devices" element={<Device />} />
         <Route path="/devices/:deviceId/:eventCode/edit" element={<EditDevice />} />

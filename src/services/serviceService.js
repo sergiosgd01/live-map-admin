@@ -56,13 +56,20 @@ export const fetchDeleteAllServices = async (code) => {
       method: 'DELETE',
     });
 
+    // Si el endpoint devuelve 404, asumimos que no hay servicios para eliminar.
+    if (response.status === 404) {
+      return { noServices: true };
+    }
+
     if (!response.ok) {
       throw new Error('Error al eliminar todas los servicios del evento');
     }
 
     console.log('Todos los servicios han sido eliminados correctamente.');
+    return { success: true };
   } catch (error) {
     console.error('Error al eliminar todos los servicios:', error);
     throw error;
   }
 };
+
