@@ -1,14 +1,15 @@
-// src/pages/Events_.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DateTime } from 'luxon';
 
 // Components
-import Layout from '../../components/Layout';
+import LocalHeaderLayout from '../../components/LocalHeaderLayout';
 import EventCard from '../../components/EventCard';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import OptionsModal from '../../components/OptionsModal';
-import Alert from '../../components/Alert';  
+import Alert from '../../components/Alert';
+import Spinner from '../../components/Spinner';
+import FloatingAddButton from '../../components/FloatingAddButton'; // Importa el FloatingAddButton
 
 // Services
 import { 
@@ -285,44 +286,13 @@ const Events = () => {
     navigate(`/events/${selectedEvent.code}/route`);
   };
 
-  if (loading)
-    return (
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100vw",
-          height: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 9999,
-        }}
-      >
-        <div className="d-flex justify-content-center">
-          <div className="spinner-border text-yellow" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        </div>
-      </div>
-    );
+  if (loading) return <Spinner />;
   if (error) return <p>Error: {error}</p>;
 
   return (
     <>
-      <Layout>
-        <div className="main-header d-flex align-items-center justify-content-between position-relative">
-          <div className="d-flex align-items-center justify-content-center">
-            <div className="page-icon pe-3">
-              <i className="bi bi-stickies"></i>
-            </div>
-            <div className="page-title d-none d-md-block">
-              <h5>Eventos de {organizationName || organizationCode}</h5>
-            </div>
-          </div>
-        </div>
-        <div className="content-wrapper" style={{ padding: '20px' }}>
+      <LocalHeaderLayout title={`Eventos de ${organizationName || organizationCode}`}>
+        <div className="content-wrapper" style={{ padding: '20px', paddingBottom: '50px' }}>
           {alert && (
             <Alert 
               type={alert.type} 
@@ -345,12 +315,14 @@ const Events = () => {
               <div ref={bottomRef} />
             </div>
           ) : (
-            <p style={{ textAlign: 'center' }}>
-              No hay eventos registrados para esta organización.
-            </p>
+            !loading && (
+              <p style={{ textAlign: 'center' }}>
+                No hay eventos organizados para esta organización.
+              </p>
+            )
           )}
-          {/* Botón “+” para agregar un nuevo evento */}
-          <button
+          {/* Uso del FloatingAddButton para agregar un nuevo evento */}
+          <FloatingAddButton
             onClick={() => {
               setEventErrors({});
               setSelectedEvent({
@@ -381,18 +353,7 @@ const Events = () => {
                 console.error("No se encontró el modal 'editEventModal'");
               }
             }}
-            className="btn btn-primary rounded-circle"
-            style={{
-              position: 'fixed',
-              bottom: '20px',
-              right: '20px',
-              width: '50px',
-              height: '50px',
-              fontSize: '24px',
-            }}
-          >
-            +
-          </button>
+          />
         </div>
 
         <OptionsModal 
@@ -691,7 +652,7 @@ const Events = () => {
             extraContent={null}
           />
         )}
-      </Layout>
+      </LocalHeaderLayout>
     </>
   );
 };

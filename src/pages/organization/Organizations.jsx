@@ -1,4 +1,3 @@
-// src/pages/Org.jsx
 import React, { useEffect, useState, useRef } from 'react';
 
 // Services
@@ -11,10 +10,11 @@ import {
 
 // Components
 import Alert from '../../components/Alert';
-import Layout from '../../components/Layout';
+import LocalHeaderLayout from '../../components/LocalHeaderLayout';
 import OrganizationCard from '../../components/OrganizationCard';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import Spinner from '../../components/Spinner';
+import FloatingAddButton from '../../components/FloatingAddButton'; // Importa el FloatingAddButton
 
 const Organizations = () => {
   const [organizations, setOrganizations] = useState([]);
@@ -33,7 +33,6 @@ const Organizations = () => {
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    console.log("Alert actualizado:", alert);
     if (alert) {
       const timer = setTimeout(() => setAlert(null), 3000);
       return () => clearTimeout(timer);
@@ -97,7 +96,6 @@ const Organizations = () => {
 
     if (selectedOrganization._id) {
       try {
-        // Incluimos el campo "code" en el payload, por si la API lo requiere
         const updatedData = {
           name: selectedOrganization.name,
           image: selectedOrganization.image,
@@ -134,13 +132,13 @@ const Organizations = () => {
     }
   };
 
+  if (loading) return <Spinner />;
+  if (error) return <p>Error: {error}</p>;
+
   return (
     <>
-      <Layout>
-        {/* SPINNER DE CARGA */}
-        {loading && <Spinner />}
-
-        <div className="content-wrapper" style={{ padding: '20px' }}>
+      <LocalHeaderLayout title="Organizaciones" withMap={false}>
+        <div className="content-wrapper" style={{ padding: '20px', paddingBottom: '50px' }}>
           {alert && (
             <Alert 
               type={alert.type} 
@@ -177,8 +175,9 @@ const Organizations = () => {
               </p>
             )
           )}
-          {/* Botón “+” para agregar una nueva organización */}
-          <button
+
+          {/* Uso del FloatingAddButton para agregar una nueva organización */}
+          <FloatingAddButton
             onClick={() => {
               setErrors({});
               setSelectedOrganization({ name: '', code: '', image: '' });
@@ -194,19 +193,7 @@ const Organizations = () => {
                 console.error("No se encontró el modal 'editOrganization'");
               }
             }}
-            className="btn btn-primary rounded-circle"
-            style={{
-              position: 'fixed',
-              bottom: '20px',
-              right: '20px',
-              width: '50px',
-              height: '50px',
-              fontSize: '24px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-            }}
-          >
-            +
-          </button>
+          />
         </div>
 
         {/* Modal para editar / agregar organización */}
@@ -302,7 +289,7 @@ const Organizations = () => {
           </div>
         </div>
 
-        {/* Modal de confirmación de eliminación usando ConfirmationModal */}
+        {/* Modal de confirmación de eliminación */}
         {showDeleteConfirmModal && (
           <ConfirmationModal
             id="deleteConfirmModal"
@@ -317,7 +304,7 @@ const Organizations = () => {
             extraContent={null}
           />
         )}
-      </Layout>
+      </LocalHeaderLayout>
     </>
   );
 };

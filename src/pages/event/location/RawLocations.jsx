@@ -1,13 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import Layout from '../../../components/Layout';
+import LocalHeaderLayout from '../../../components/LocalHeaderLayout';
 import {
   fetchEventRawLocations,
   deleteAllEventRawLocations
 } from '../../../services/rawLocationService';
 import { fetchDevicesByEventCode } from '../../../services/deviceService';
 
-// IMPORTA el archivo de estilos:
 import '../../../styles/RawLocations.css';
 
 const RawLocations = () => {
@@ -62,7 +61,65 @@ const RawLocations = () => {
     ? locations
     : locations.filter((loc) => loc.deviceID === selectedDevice);
 
-  // (OPCIÓN 1) Deja que DataTables pinte todo
+  const handleDeleteAllLocations = async () => {
+    try {
+      if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
+        await deleteAllEventRawLocations(eventCode);
+        setLocations([]);
+        alert('Todas las ubicaciones han sido eliminadas correctamente.');
+      }
+    } catch (error) {
+      console.error('Error al eliminar las ubicaciones:', error);
+      alert('Error al eliminar las ubicaciones. Por favor, inténtalo de nuevo.');
+    }
+  };
+
+  // Construimos el HTML para el dropdown de dispositivos
+  const deviceDropdownHtml = `
+    <div class="dropdown" style="margin-left: 10px;">
+      <button 
+        class="btn btn-primary dropdown-toggle" 
+        type="button"
+        id="deviceDropdown" 
+        data-bs-toggle="dropdown" 
+        aria-expanded="false"
+      >
+        ${
+          selectedDevice === 'ALL'
+            ? 'Todos los dispositivos'
+            : (devices.find((d) => d.deviceID === selectedDevice)?.name || 'Todos los dispositivos')
+        }
+      </button>
+      <ul class="dropdown-menu" aria-labelledby="deviceDropdown">
+        <li>
+          <a class="dropdown-item device-option" data-device="ALL" href="#">
+            Todos los dispositivos
+          </a>
+        </li>
+        ${
+          devices.map((dev) => `
+            <li>
+              <a class="dropdown-item device-option" data-device="${dev.deviceID}" href="#">
+                ${dev.name}
+              </a>
+            </li>
+          `).join('')
+        }
+      </ul>
+    </div>
+  `;
+
+  // Construimos el HTML para el botón de eliminar
+  const deleteAllButtonHtml = `
+    <button 
+      class="btn btn-danger delete-all-btn"
+      style="padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;"
+    >
+      Eliminar todas las ubicaciones
+    </button>
+  `;
+
+  // Inicializamos DataTables
   useEffect(() => {
     let dataTable;
 
@@ -74,13 +131,9 @@ const RawLocations = () => {
 
     if (filteredLocations.length > 0) {
       dataTable = $('#hideSearchExample').DataTable({
-        // Aquí pasamos todo el array de ubicaciones filtradas:
         data: filteredLocations,
-
-        // Definimos todas las columnas que se mostrarán y cómo se renderizan
         columns: [
           {
-            // Fecha/hora
             data: 'timestamp',
             render: function(value) {
               if (!value) return 'N/A';
@@ -95,21 +148,15 @@ const RawLocations = () => {
               );
             }
           },
-          {
-            data: 'latitude'
-          },
-          {
-            data: 'longitude'
-          },
+          { data: 'latitude' },
+          { data: 'longitude' },
           {
             data: 'accuracy',
-            render: function(value) {
-              return value ? value : 'N/A';
-            }
+            render: (val) => val || 'N/A'
           },
           {
             data: 'errorCode',
-            render: function(data) {
+            render: (data) => {
               const errorCode = parseInt(data, 10);
               if (isNaN(errorCode)) {
                 return `<span class="badge shade-red">N/A</span>`;
@@ -127,20 +174,17 @@ const RawLocations = () => {
             }
           },
           {
-            // Mostramos el nombre del dispositivo
             data: 'deviceID',
             render: (deviceID) => {
-              // Buscamos en el array de devices
-              const device = devices.find((d) => d.deviceID === deviceID);
-              return device ? device.name : deviceID;
+              const dev = devices.find((d) => d.deviceID === deviceID);
+              return dev ? dev.name : deviceID;
             }
           },
           {
-            // Pintamos un circulito del color del dispositivo
             data: 'deviceID',
             render: (deviceID) => {
-              const device = devices.find((d) => d.deviceID === deviceID);
-              const color = device ? device.color : 'transparent';
+              const dev = devices.find((d) => d.deviceID === deviceID);
+              const color = dev ? dev.color : 'transparent';
               return `
                 <div style="width:20px; height:20px; border-radius:50%; background-color:${color}">
                 </div>
@@ -148,15 +192,21 @@ const RawLocations = () => {
             }
           }
         ],
-
-        dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-             "<'row'<'col-sm-12'tr>>" +
-             "<'row'<'col-sm-12'i>>" +
-             "<'row'<'col-sm-12'p>>",
+        // Personalizamos el dom para situar los controles
+        dom:
+        // Fila superior: a la izquierda => lengthMenu (l); a la derecha => deviceDropdown
+        "<'row align-items-center justify-content-between'<'col-auto lengthMenu'l><'col-auto deviceDropdown'>>" +
+        // Tabla
+        "<'row'<'col-12'tr>>" +
+        // Fila inferior: a la izquierda => botón; a la derecha => info + paginación
+        "<'row align-items-center justify-content-between'<'col-auto deleteAllButton'><'col-auto text-end'i p>>"
+      ,
+      
+        
         paging: true,
         ordering: true,
         info: true,
-        searching: false,
+        searching: false, // Desactivamos el buscador
         language: {
           lengthMenu: "Mostrar _MENU_ ubicaciones",
           info: "Mostrando _START_ a _END_ de _TOTAL_ ubicaciones",
@@ -169,81 +219,51 @@ const RawLocations = () => {
             next: "Siguiente",
             previous: "Anterior"
           },
+        },
+        initComplete: function() {
+          // Inyectamos el dropdown y el botón
+          $('.deviceDropdown').html(deviceDropdownHtml);
+          $('.deleteAllButton').html(deleteAllButtonHtml);
+
+          // Event listener para cambiar dispositivo al hacer clic en una opción del dropdown
+          $('.deviceDropdown').on('click', '.device-option', function(e) {
+            e.preventDefault();
+            const devId = $(this).data('device');
+            setSelectedDevice(devId);
+            // Cambiamos el texto del botón
+            const newText = (devId === 'ALL')
+              ? 'Todos los dispositivos'
+              : devices.find((d) => d.deviceID === devId)?.name || 'Desconocido';
+            $('#deviceDropdown').text(newText);
+          });
+
+          // Event listener para el botón “Eliminar todas las ubicaciones”
+          $('.deleteAllButton').on('click', '.delete-all-btn', function(e) {
+            e.preventDefault();
+            handleDeleteAllLocations();
+          });
         }
       });
     }
 
     return () => {
-      if (dataTable) {
-        dataTable.destroy();
-      }
+      if (dataTable) dataTable.destroy();
     };
   }, [filteredLocations, devices]);
 
-  const handleDeleteAllLocations = async () => {
-    try {
-      if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
-        await deleteAllEventRawLocations(eventCode);
-        setLocations([]);
-        alert('Todas las ubicaciones han sido eliminadas correctamente.');
-      }
-    } catch (error) {
-      console.error('Error al eliminar todas las ubicaciones:', error);
-      alert('Error al eliminar las ubicaciones. Por favor, inténtalo de nuevo.');
-    }
-  };
-
   return (
-    <Layout>
+    <LocalHeaderLayout title="Raw Locations">
       <div className="content-wrapper">
         <div className="row gx-3">
           <div className="col-sm-12 col-12">
             <div className="card">
-              <div className="card-header">
-                <div className="card-title">Raw Locations</div>
-              </div>
               <div className="card-body">
-                <button
-                  onClick={handleDeleteAllLocations}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#dc3545',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '5px',
-                    cursor: 'pointer',
-                    marginBottom: '20px',
-                  }}
-                >
-                  Eliminar todas las ubicaciones
-                </button>
-
-                {devices.length > 1 && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '10px',
-                      right: '10px',
-                    }}
-                  >
-                    <select
-                      value={selectedDevice}
-                      onChange={(e) => setSelectedDevice(e.target.value)}
-                      style={{ marginBottom: '10px' }}
-                    >
-                      <option value="ALL">All Devices</option>
-                      {devices.map((device) => (
-                        <option key={device.deviceID} value={device.deviceID}>
-                          {device.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
+                {/* 
+                  Eliminamos aquí el botón y el dropdown, 
+                  pues ahora los inyectamos dentro del DataTable (initComplete)
+                */}
                 {filteredLocations.length > 0 ? (
                   <div className="table-responsive">
-                    {/* Sin <tbody> manual; solo <thead> */}
                     <table
                       id="hideSearchExample"
                       className="table custom-table"
@@ -260,7 +280,6 @@ const RawLocations = () => {
                           <th>Device Color</th>
                         </tr>
                       </thead>
-                      {/* No <tbody> aquí: DataTables lo genera. */}
                     </table>
                   </div>
                 ) : (
@@ -271,7 +290,7 @@ const RawLocations = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </LocalHeaderLayout>
   );
 };
 

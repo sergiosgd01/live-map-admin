@@ -2,17 +2,17 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 const Alert = ({ type, message, onClose }) => {
-  // Función para definir las clases y el título según el tipo de alerta
+  // Función para definir las clases y el título según el tipo de alerta en español
   const getAlertProps = (type) => {
     switch (type) {
       case 'danger':
-        return { className: 'box-bdr-red text-red', title: 'Danger!' };
+        return { className: 'box-bdr-red text-red', title: '¡Peligro!' };
       case 'success':
-        return { className: 'box-bdr-green text-green', title: 'Success!' };
+        return { className: 'box-bdr-green text-green', title: '¡Éxito!' };
       case 'warning':
-        return { className: 'box-bdr-yellow text-yellow', title: 'Warning!' };
+        return { className: 'box-bdr-yellow text-yellow', title: '¡Advertencia!' };
       case 'info':
-        return { className: 'box-bdr-blue text-blue', title: 'Info!' };
+        return { className: 'box-bdr-blue text-blue', title: '¡Información!' };
       default:
         return { className: '', title: '' };
     }
@@ -32,8 +32,7 @@ const Alert = ({ type, message, onClose }) => {
     maxWidth: '90%',
   };
 
-  // Estilos para que el alert aparezca centrado en la parte superior
-  // y se ajuste todo el contenido (mensaje y botón de cierre)
+  // Estilos para que el alert aparezca centrado y se ajuste el contenido
   const containerStyle = {
     backgroundColor: '#fff',
     padding: '15px 20px',

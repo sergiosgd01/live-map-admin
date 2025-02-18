@@ -11,7 +11,7 @@ const OrganizationCard = ({ org, onEdit, onDelete }) => {
 
   return (
     <div
-      className="col-sm-4 col-12"
+      className="col-lg-4 col-md-6 col-sm-12" 
       style={{ marginBottom: '20px', cursor: 'pointer' }}
       onClick={handleCardClick}
     >
@@ -59,7 +59,7 @@ const OrganizationCard = ({ org, onEdit, onDelete }) => {
         </div>
 
         {/* Cabecera con el nombre de la organización */}
-        <div className="card-header">
+        <div className="card-header d-flex justify-content-between align-items-center">
           <div className="card-title">{org.name}</div>
         </div>
 

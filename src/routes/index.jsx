@@ -23,7 +23,6 @@ import ServicePage from "../pages/event/service/ServicePage";
 import ServiceType from "../pages/event/service/ServiceType";
 
 import Device from "../pages/event/device/Device";
-import EditDevice from "../pages/event/device/EditDevice";
 
 const AppRoutes = () => (
   <GoogleMapsProvider>
@@ -50,7 +49,6 @@ const AppRoutes = () => (
         <Route path="/services" element={<ServiceType />} />
 
         <Route path="/events/:eventCode/devices" element={<Device />} />
-        <Route path="/devices/:deviceId/:eventCode/edit" element={<EditDevice />} />
       </Routes>
     </Router>
   </GoogleMapsProvider>
