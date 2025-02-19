@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import LocalHeaderLayout from '../../../components/LocalHeaderLayout';
+import Spinner from '../../../components/Spinner';  
 import {
   fetchEventRawLocations,
   deleteAllEventRawLocations
 } from '../../../services/rawLocationService';
 import { fetchDevicesByEventCode } from '../../../services/deviceService';
+import { fetchEventByCode } from '../../../services/eventService';
 
 import '../../../styles/RawLocations.css';
 
@@ -14,19 +16,41 @@ const RawLocations = () => {
   const [locations, setLocations] = useState([]);
   const [devices, setDevices] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState('ALL');
+  const [loading, setLoading] = useState(true);
+  const [organizationCode, setOrganizationCode] = useState('');
   const tableRef = useRef(null);
+
+  const breadcrumbs = [
+    { label: "Organizaciones", path: "/organizations" },
+    { 
+      label: "Eventos", 
+      path: organizationCode ? `/organizations/${organizationCode}/events` : '#'
+    },
+    { label: "Registro de Ubicaciones", path: "" },
+  ];
 
   useEffect(() => {
     let ignore = false;
+
     const fetchData = async () => {
       if (!eventCode || ignore) return;
       try {
+        setLoading(true);
+
+        const eventData = await fetchEventByCode(eventCode);
+        if (eventData && eventData.organizationCode) {
+          setOrganizationCode(eventData.organizationCode);
+        }
+
         await loadDevices();
         await loadLocations();
       } catch (error) {
         console.error("Error in fetchData:", error);
+      } finally {
+        setLoading(false);
       }
     };
+
     fetchData();
     return () => {
       ignore = true;
@@ -174,21 +198,22 @@ const RawLocations = () => {
             }
           },
           {
-            data: 'deviceID',
-            render: (deviceID) => {
-              const dev = devices.find((d) => d.deviceID === deviceID);
-              return dev ? dev.name : deviceID;
+            data: 'deviceID', // Cambiamos a null para manejar nosotros los datos
+            render: (data, type, row) => {
+              if (!row.deviceID) return 'Sin dispositivo';
+              const dev = devices.find((d) => d.deviceID === row.deviceID);
+              return dev ? dev.name : row.deviceID;
             }
           },
           {
-            data: 'deviceID',
-            render: (deviceID) => {
-              const dev = devices.find((d) => d.deviceID === deviceID);
+            data: 'deviceID', // Cambiamos a null para manejar nosotros los datos
+            render: (data, type, row) => {
+              if (!row.deviceID) {
+                return `<div style="width:20px; height:20px; border-radius:50%; background-color:transparent"></div>`;
+              }
+              const dev = devices.find((d) => d.deviceID === row.deviceID);
               const color = dev ? dev.color : 'transparent';
-              return `
-                <div style="width:20px; height:20px; border-radius:50%; background-color:${color}">
-                </div>
-              `;
+              return `<div style="width:20px; height:20px; border-radius:50%; background-color:${color}"></div>`;
             }
           }
         ],
@@ -252,7 +277,9 @@ const RawLocations = () => {
   }, [filteredLocations, devices]);
 
   return (
-    <LocalHeaderLayout title="Raw Locations">
+    <LocalHeaderLayout breadcrumbs={breadcrumbs}>
+      {loading && <Spinner />}
+
       <div className="content-wrapper">
         <div className="row gx-3">
           <div className="col-sm-12 col-12">
@@ -283,7 +310,14 @@ const RawLocations = () => {
                     </table>
                   </div>
                 ) : (
-                  <p>No se han encontrado ubicaciones para este evento.</p>
+                  !loading && (
+                    <div className="d-flex flex-column align-items-center justify-content-center my-5">
+                      <i className="bi bi-exclamation-circle text-muted fs-1 mb-3"></i>
+                      <p className="text-muted fs-5 m-0">
+                        No se han encontrado ubicaciones para este evento.
+                      </p>
+                    </div>
+                  )
                 )}
               </div>
             </div>

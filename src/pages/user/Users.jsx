@@ -13,6 +13,10 @@ const Users = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
 
+  const breadcrumbs = [
+    { label: "Usuarios", path: "" }
+  ];
+
   useEffect(() => {
     const loadUsers = async () => {
       try {
@@ -80,7 +84,7 @@ const Users = () => {
   if (loading) return <Spinner />;
 
   return (
-    <LocalHeaderLayout title="Usuarios">
+    <LocalHeaderLayout breadcrumbs={breadcrumbs}>
       {error && <Alert type="danger" message={`Error: ${error}`} onClose={() => setError(null)} />}
       
       {/* Lista de usuarios en tarjetas */}

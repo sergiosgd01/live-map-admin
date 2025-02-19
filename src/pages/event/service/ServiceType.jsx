@@ -4,6 +4,7 @@ import ConfirmationModal from "../../../components/ConfirmationModal";
 import LocalHeaderLayout from "../../../components/LocalHeaderLayout";
 import Alert from "../../../components/Alert";
 import Spinner from "../../../components/Spinner";
+import FloatingAddButton from "../../../components/FloatingAddButton";
 
 const ServiceType = () => {
   const [serviceTypes, setServiceTypes] = useState([]);
@@ -14,6 +15,10 @@ const ServiceType = () => {
   const [newServiceType, setNewServiceType] = useState({ name: "", image: "" });
   const [addErrors, setAddErrors] = useState({});
   const [alert, setAlert] = useState(null);
+
+  const breadcrumbs = [
+    { label: "Administrador Tipos de Servicios", path: "" }
+  ];
 
   // Cargar la lista de tipos
   useEffect(() => {
@@ -93,7 +98,7 @@ const ServiceType = () => {
   };
 
   return (
-    <LocalHeaderLayout title="Administrar Tipos de Servicios">
+    <LocalHeaderLayout breadcrumbs={breadcrumbs}>
       <div className="content-wrapper" style={{ padding: "20px" }}>
         {alert && (
           <Alert
@@ -181,21 +186,7 @@ const ServiceType = () => {
       </div>
 
       {/* Botón circular para abrir el modal de agregar nuevo tipo de servicio */}
-      <button
-        onClick={() => setShowAddModal(true)}
-        className="btn btn-primary rounded-circle"
-        style={{
-          position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          width: "clamp(30px, 5vw, 50px)",
-          height: "clamp(30px, 5vw, 50px)",
-          fontSize: "clamp(16px, 2vw, 24px)",
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
-        }}
-      >
-        +
-      </button>
+      <FloatingAddButton onClick={() => setShowAddModal(true)} />
 
       {/* Modal para agregar un nuevo tipo de servicio */}
       {showAddModal && (

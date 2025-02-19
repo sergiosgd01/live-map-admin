@@ -5,6 +5,7 @@ import {
   deleteDeviceById, 
   updateDevice 
 } from "../../../services/deviceService";
+import { fetchEventByCode } from "../../../services/eventService"; 
 import LocalHeaderLayout from "../../../components/LocalHeaderLayout";
 import Alert from "../../../components/Alert";
 import Spinner from "../../../components/Spinner";
@@ -18,24 +19,40 @@ const Device = () => {
   const [error, setError] = useState(null);
   const [deviceToDelete, setDeviceToDelete] = useState(null);
   const [alert, setAlert] = useState(null);
+  const [organizationCode, setOrganizationCode] = useState(''); 
 
   // Estado para el dispositivo que se va a editar y los errores de validación
   const [selectedDeviceForEdit, setSelectedDeviceForEdit] = useState(null);
   const [editErrors, setEditErrors] = useState({});
 
-  // Cargar dispositivos asociados al eventCode
+  const breadcrumbs = [
+    { label: "Organizaciones", path: "/organizations" },
+    { 
+      label: "Eventos", 
+      path: organizationCode ? `/organizations/${organizationCode}/events` : '#'
+    },
+    { label: "Dispositivos", path: "" },
+  ];
+
   useEffect(() => {
-    const loadDevices = async () => {
+    const loadData = async () => {
       try {
-        const data = await fetchDevicesByEventCode(eventCode);
-        setDevices(data);
+        // Fetch event data to get organization code
+        const eventData = await fetchEventByCode(eventCode);
+        if (eventData && eventData.organizationCode) {
+          setOrganizationCode(eventData.organizationCode);
+        }
+
+        // Fetch devices
+        const deviceData = await fetchDevicesByEventCode(eventCode);
+        setDevices(deviceData);
       } catch (err) {
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
-    loadDevices();
+    loadData();
   }, [eventCode]);
 
   // Auto-ocultar alertas después de 3 segundos
@@ -104,7 +121,7 @@ const Device = () => {
   };
 
   return (
-    <LocalHeaderLayout title="Administrar Dispositivos">
+    <LocalHeaderLayout breadcrumbs={breadcrumbs}>
       <div className="content-wrapper" style={{ padding: "20px" }}>
         {alert && (
           <Alert
@@ -117,6 +134,13 @@ const Device = () => {
           <Spinner />
         ) : error ? (
           <p className="text-center mt-5 text-danger">Error: {error}</p>
+        ) : devices.length === 0 ? (
+          <div className="d-flex flex-column align-items-center justify-content-center my-5">
+            <i className="bi bi-exclamation-circle text-muted fs-1 mb-3"></i>
+            <p className="text-muted fs-5 m-0">
+              No hay dispositivos registrados para este evento.
+            </p>
+          </div>
         ) : (
           <div className="card mt-3">
             <div className="card-body">

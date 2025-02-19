@@ -52,6 +52,11 @@ const Events = () => {
   // Ref para el final de la lista de eventos
   const bottomRef = useRef(null);
 
+  const breadcrumbs = [
+    { label: "Organizaciones", path: "/organizations" },
+    { label: `Eventos del ${organizationName}`, path: "" }
+  ];
+
   useEffect(() => {
     console.log("Alert actualizado:", alert);
     if (alert) {
@@ -290,370 +295,371 @@ const Events = () => {
   if (error) return <p>Error: {error}</p>;
 
   return (
-    <>
-      <LocalHeaderLayout title={`Eventos de ${organizationName || organizationCode}`}>
-        <div className="content-wrapper" style={{ padding: '20px', paddingBottom: '50px' }}>
-          {alert && (
-            <Alert 
-              type={alert.type} 
-              message={alert.message} 
-              onClose={() => setAlert(null)} 
-            />
-          )}
-          {events.length > 0 ? (
-            <div className="row gx-3 justify-content-center align-items-stretch">
-              {events.map(event => (
-                <EventCard
-                  key={event._id}
-                  event={event}
-                  onEdit={(e) => handleEditEvent(event, e)}
-                  onViewDetails={(e) => handleViewDetails(event, e)}
-                  onDelete={(e) => handleDeleteEvent(event, e)}
-                />
-              ))}
-              {/* Elemento al final para hacer scroll */}
-              <div ref={bottomRef} />
-            </div>
-          ) : (
-            !loading && (
-              <p style={{ textAlign: 'center' }}>
-                No hay eventos organizados para esta organización.
-              </p>
-            )
-          )}
-          {/* Uso del FloatingAddButton para agregar un nuevo evento */}
-          <FloatingAddButton
-            onClick={() => {
-              setEventErrors({});
-              setSelectedEvent({
-                name: '',
-                postalCode: '',
-                time: '',
-                startDate: '',
-                endDate: '',
-                image: '',
-                icon: '',
-                organizationCode: organizationCode, 
-              });
-              setCancelInfo('');
-              // Cargamos todas las organizaciones para el select
-              fetchOrganizations()
-                .then(orgs => setEventOrganizations(orgs))
-                .catch(err => console.error("Error al cargar organizaciones:", err));
-                
-              const modalEl = document.getElementById("editEventModal");
-              if (modalEl) {
-                const formEl = modalEl.querySelector("form");
-                if (formEl) {
-                  formEl.classList.remove("was-validated");
-                }
-                const modal = new window.bootstrap.Modal(modalEl);
-                modal.show();
-              } else {
-                console.error("No se encontró el modal 'editEventModal'");
-              }
-            }}
+    <LocalHeaderLayout breadcrumbs={breadcrumbs}>
+      <div className="content-wrapper" style={{ padding: '20px', paddingBottom: '50px' }}>
+        {alert && (
+          <Alert 
+            type={alert.type} 
+            message={alert.message} 
+            onClose={() => setAlert(null)} 
           />
-        </div>
-
-        <OptionsModal 
-          selectedEvent={selectedEvent}
-          handleEditLocation={handleEditLocation}
-          handleEditRoute={handleEditRoute}
+        )}
+        {events.length > 0 ? (
+          <div className="row gx-3 justify-content-center align-items-stretch">
+            {events.map(event => (
+              <EventCard
+                key={event._id}
+                event={event}
+                onEdit={(e) => handleEditEvent(event, e)}
+                onViewDetails={(e) => handleViewDetails(event, e)}
+                onDelete={(e) => handleDeleteEvent(event, e)}
+              />
+            ))}
+            {/* Elemento al final para hacer scroll */}
+            <div ref={bottomRef} />
+          </div>
+        ) : (
+          !loading && (
+            <div className="d-flex flex-column align-items-center justify-content-center my-5">
+              <i className="bi bi-exclamation-circle text-muted fs-1 mb-3"></i>
+              <p className="text-muted fs-5 m-0">
+                No hay eventos registrados para esta organización.
+              </p>
+            </div>
+          )
+        )}
+        {/* Uso del FloatingAddButton para agregar un nuevo evento */}
+        <FloatingAddButton
+          onClick={() => {
+            setEventErrors({});
+            setSelectedEvent({
+              name: '',
+              postalCode: '',
+              time: '',
+              startDate: '',
+              endDate: '',
+              image: '',
+              icon: '',
+              organizationCode: organizationCode, 
+            });
+            setCancelInfo('');
+            // Cargamos todas las organizaciones para el select
+            fetchOrganizations()
+              .then(orgs => setEventOrganizations(orgs))
+              .catch(err => console.error("Error al cargar organizaciones:", err));
+              
+            const modalEl = document.getElementById("editEventModal");
+            if (modalEl) {
+              const formEl = modalEl.querySelector("form");
+              if (formEl) {
+                formEl.classList.remove("was-validated");
+              }
+              const modal = new window.bootstrap.Modal(modalEl);
+              modal.show();
+            } else {
+              console.error("No se encontró el modal 'editEventModal'");
+            }
+          }}
         />
+      </div>
 
-        {/* Modal para editar / actualizar evento */}
-        <div
-          className="modal fade"
-          id="editEventModal"
-          data-bs-backdrop="static"
-          data-bs-keyboard="false"
-          tabIndex="-1"
-          aria-labelledby="editEventModalLabel"
-          aria-hidden="true"
-        >
-          <div className="modal-dialog modal-lg modal-dialog-centered" role="document">
-            <div className="modal-content">
-              <form onSubmit={handleEventSubmit} className="needs-validation" noValidate>
-                <div className="modal-header">
-                  <h5 className="modal-title" id="editEventModalLabel">
-                    {selectedEvent && selectedEvent._id ? "Editar Evento" : "Agregar Evento"}
-                  </h5>
-                  <button
-                    type="button"
-                    className="btn btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                  ></button>
+      <OptionsModal 
+        selectedEvent={selectedEvent}
+        handleEditLocation={handleEditLocation}
+        handleEditRoute={handleEditRoute}
+      />
+
+      {/* Modal para editar / actualizar evento */}
+      <div
+        className="modal fade"
+        id="editEventModal"
+        data-bs-backdrop="static"
+        data-bs-keyboard="false"
+        tabIndex="-1"
+        aria-labelledby="editEventModalLabel"
+        aria-hidden="true"
+      >
+        <div className="modal-dialog modal-lg modal-dialog-centered" role="document">
+          <div className="modal-content">
+            <form onSubmit={handleEventSubmit} className="needs-validation" noValidate>
+              <div className="modal-header">
+                <h5 className="modal-title" id="editEventModalLabel">
+                  {selectedEvent && selectedEvent._id ? "Editar Evento" : "Agregar Evento"}
+                </h5>
+                <button
+                  type="button"
+                  className="btn btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
+              </div>
+              {selectedEvent && selectedEvent._id && selectedEvent.status === 1 && (
+                <div className="alert alert-warning m-3" role="alert">
+                  Este evento está cancelado.
                 </div>
-                {selectedEvent && selectedEvent._id && selectedEvent.status === 1 && (
-                  <div className="alert alert-warning m-3" role="alert">
-                    Este evento está cancelado.
-                  </div>
-                )}
-                {selectedEvent && selectedEvent._id && selectedEvent.status === 2 && (
-                  <div className="alert alert-danger m-3" role="alert">
-                    Este evento está finalizado.
-                  </div>
-                )}
-                <div className="modal-body" style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto' }}>
-                  {selectedEvent && (
-                    <>
-                      <div className="mb-3">
-                        <label htmlFor="eventName" className="form-label">Nombre</label>
-                        <input
-                          type="text"
-                          className={`form-control ${eventErrors.name ? 'is-invalid' : ''}`}
-                          id="eventName"
-                          value={selectedEvent.name || ''}
-                          onChange={(e) =>
-                            setSelectedEvent({ ...selectedEvent, name: e.target.value })
-                          }
-                          placeholder="Nombre del evento"
-                          required
-                        />
-                        {eventErrors.name && (
-                          <div className="invalid-feedback">
-                            {eventErrors.name}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mb-3">
-                        <label htmlFor="eventPostalCode" className="form-label">Código Postal</label>
-                        <input
-                          type="text"
-                          className={`form-control ${eventErrors.postalCode ? 'is-invalid' : ''}`}
-                          id="eventPostalCode"
-                          value={selectedEvent.postalCode || ''}
-                          onChange={(e) =>
-                            setSelectedEvent({ ...selectedEvent, postalCode: e.target.value })
-                          }
-                          placeholder="Código Postal"
-                          required
-                        />
-                        {eventErrors.postalCode && (
-                          <div className="invalid-feedback">
-                            {eventErrors.postalCode}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mb-3">
-                        <label htmlFor="eventTime" className="form-label">Tiempo actualización (segundos)</label>
-                        <input
-                          type="number"
-                          className={`form-control ${eventErrors.time ? 'is-invalid' : ''}`}
-                          id="eventTime"
-                          value={selectedEvent.time || ''}
-                          onChange={(e) =>
-                            setSelectedEvent({ ...selectedEvent, time: e.target.value })
-                          }
-                          placeholder="Tiempo de actualización"
-                          required
-                        />
-                        {eventErrors.time && (
-                          <div className="invalid-feedback">
-                            {eventErrors.time}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mb-3">
-                        <label htmlFor="eventStartDate" className="form-label">Fecha de Inicio</label>
-                        <input
-                          type="datetime-local"
-                          className={`form-control ${eventErrors.startDate ? 'is-invalid' : ''}`}
-                          id="eventStartDate"
-                          value={selectedEvent.startDate ? selectedEvent.startDate.replace('Z', '') : ''}
-                          onChange={(e) =>
-                            setSelectedEvent({ ...selectedEvent, startDate: e.target.value })
-                          }
-                          required
-                        />
-                        {eventErrors.startDate && (
-                          <div className="invalid-feedback">
-                            {eventErrors.startDate}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mb-3">
-                        <label htmlFor="eventEndDate" className="form-label">Fecha de Fin</label>
-                        <input
-                          type="datetime-local"
-                          className={`form-control ${eventErrors.endDate ? 'is-invalid' : ''}`}
-                          id="eventEndDate"
-                          value={selectedEvent.endDate ? selectedEvent.endDate.replace('Z', '') : ''}
-                          onChange={(e) =>
-                            setSelectedEvent({ ...selectedEvent, endDate: e.target.value })
-                          }
-                          required
-                        />
-                        {eventErrors.endDate && (
-                          <div className="invalid-feedback">
-                            {eventErrors.endDate}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mb-3">
-                        <label htmlFor="eventImage" className="form-label">Imagen (URL)</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="eventImage"
-                          value={selectedEvent.image || ''}
-                          onChange={(e) =>
-                            setSelectedEvent({ ...selectedEvent, image: e.target.value })
-                          }
-                          placeholder="URL de la imagen"
-                        />
-                        {eventErrors.image && (
-                          <div className="invalid-feedback">
-                            {eventErrors.image}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mb-3">
-                        <label htmlFor="eventIcon" className="form-label">Icono (URL)</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="eventIcon"
-                          value={selectedEvent.icon || ''}
-                          onChange={(e) =>
-                            setSelectedEvent({ ...selectedEvent, icon: e.target.value })
-                          }
-                          placeholder="URL del icono"
-                        />
-                        {eventErrors.icon && (
-                          <div className="invalid-feedback">
-                            {eventErrors.icon}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mb-3">
-                        <label htmlFor="eventOrganization" className="form-label">Organización</label>
-                        <select
-                          id="eventOrganization"
-                          className={`form-select ${eventErrors.organizationCode ? 'is-invalid' : ''}`}
-                          value={selectedEvent.organizationCode || ''}
-                          onChange={(e) =>
-                            setSelectedEvent({ ...selectedEvent, organizationCode: e.target.value })
-                          }
-                          required
-                        >
-                          <option value="" disabled>
-                            Selecciona una organización
-                          </option>
-                          {eventOrganizations.map((org) => (
-                            <option key={org.code} value={org.code}>
-                              {org.name}
-                            </option>
-                          ))}
-                        </select>
-                        {eventErrors.organizationCode && (
-                          <div className="invalid-feedback">
-                            {eventErrors.organizationCode}
-                          </div>
-                        )}
-                      </div>
-                      {selectedEvent._id && (
-                        <div className="d-flex flex-wrap gap-2">
-                          {selectedEvent.status !== 0 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                openConfirmModal("resume", "Confirmar Reanudación", "¿Estás seguro de que deseas reanudar el evento?")
-                              }
-                              className="btn btn-success"
-                            >
-                              Reanudar Evento
-                            </button>
-                          )}
-                          {selectedEvent.status !== 1 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                openConfirmModal("suspend", "Confirmar Suspensión", "¿Estás seguro de que deseas suspender el evento?")
-                              }
-                              className="btn btn-warning"
-                            >
-                              Suspender Evento
-                            </button>
-                          )}
-                          {selectedEvent.status !== 2 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                openConfirmModal("finish", "Confirmar Finalización", "¿Estás seguro de que deseas finalizar el evento?")
-                              }
-                              className="btn btn-danger"
-                            >
-                              Finalizar Evento
-                            </button>
-                          )}
+              )}
+              {selectedEvent && selectedEvent._id && selectedEvent.status === 2 && (
+                <div className="alert alert-danger m-3" role="alert">
+                  Este evento está finalizado.
+                </div>
+              )}
+              <div className="modal-body" style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto' }}>
+                {selectedEvent && (
+                  <>
+                    <div className="mb-3">
+                      <label htmlFor="eventName" className="form-label">Nombre</label>
+                      <input
+                        type="text"
+                        className={`form-control ${eventErrors.name ? 'is-invalid' : ''}`}
+                        id="eventName"
+                        value={selectedEvent.name || ''}
+                        onChange={(e) =>
+                          setSelectedEvent({ ...selectedEvent, name: e.target.value })
+                        }
+                        placeholder="Nombre del evento"
+                        required
+                      />
+                      {eventErrors.name && (
+                        <div className="invalid-feedback">
+                          {eventErrors.name}
                         </div>
                       )}
-                    </>
-                  )}
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    Cancelar
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    Guardar Cambios
-                  </button>
-                </div>
-              </form>
-            </div>
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="eventPostalCode" className="form-label">Código Postal</label>
+                      <input
+                        type="text"
+                        className={`form-control ${eventErrors.postalCode ? 'is-invalid' : ''}`}
+                        id="eventPostalCode"
+                        value={selectedEvent.postalCode || ''}
+                        onChange={(e) =>
+                          setSelectedEvent({ ...selectedEvent, postalCode: e.target.value })
+                        }
+                        placeholder="Código Postal"
+                        required
+                      />
+                      {eventErrors.postalCode && (
+                        <div className="invalid-feedback">
+                          {eventErrors.postalCode}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="eventTime" className="form-label">Tiempo actualización (segundos)</label>
+                      <input
+                        type="number"
+                        className={`form-control ${eventErrors.time ? 'is-invalid' : ''}`}
+                        id="eventTime"
+                        value={selectedEvent.time || ''}
+                        onChange={(e) =>
+                          setSelectedEvent({ ...selectedEvent, time: e.target.value })
+                        }
+                        placeholder="Tiempo de actualización"
+                        required
+                      />
+                      {eventErrors.time && (
+                        <div className="invalid-feedback">
+                          {eventErrors.time}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="eventStartDate" className="form-label">Fecha de Inicio</label>
+                      <input
+                        type="datetime-local"
+                        className={`form-control ${eventErrors.startDate ? 'is-invalid' : ''}`}
+                        id="eventStartDate"
+                        value={selectedEvent.startDate ? selectedEvent.startDate.replace('Z', '') : ''}
+                        onChange={(e) =>
+                          setSelectedEvent({ ...selectedEvent, startDate: e.target.value })
+                        }
+                        required
+                      />
+                      {eventErrors.startDate && (
+                        <div className="invalid-feedback">
+                          {eventErrors.startDate}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="eventEndDate" className="form-label">Fecha de Fin</label>
+                      <input
+                        type="datetime-local"
+                        className={`form-control ${eventErrors.endDate ? 'is-invalid' : ''}`}
+                        id="eventEndDate"
+                        value={selectedEvent.endDate ? selectedEvent.endDate.replace('Z', '') : ''}
+                        onChange={(e) =>
+                          setSelectedEvent({ ...selectedEvent, endDate: e.target.value })
+                        }
+                        required
+                      />
+                      {eventErrors.endDate && (
+                        <div className="invalid-feedback">
+                          {eventErrors.endDate}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="eventImage" className="form-label">Imagen (URL)</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="eventImage"
+                        value={selectedEvent.image || ''}
+                        onChange={(e) =>
+                          setSelectedEvent({ ...selectedEvent, image: e.target.value })
+                        }
+                        placeholder="URL de la imagen"
+                      />
+                      {eventErrors.image && (
+                        <div className="invalid-feedback">
+                          {eventErrors.image}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="eventIcon" className="form-label">Icono (URL)</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="eventIcon"
+                        value={selectedEvent.icon || ''}
+                        onChange={(e) =>
+                          setSelectedEvent({ ...selectedEvent, icon: e.target.value })
+                        }
+                        placeholder="URL del icono"
+                      />
+                      {eventErrors.icon && (
+                        <div className="invalid-feedback">
+                          {eventErrors.icon}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="eventOrganization" className="form-label">Organización</label>
+                      <select
+                        id="eventOrganization"
+                        className={`form-select ${eventErrors.organizationCode ? 'is-invalid' : ''}`}
+                        value={selectedEvent.organizationCode || ''}
+                        onChange={(e) =>
+                          setSelectedEvent({ ...selectedEvent, organizationCode: e.target.value })
+                        }
+                        required
+                      >
+                        <option value="" disabled>
+                          Selecciona una organización
+                        </option>
+                        {eventOrganizations.map((org) => (
+                          <option key={org.code} value={org.code}>
+                            {org.name}
+                          </option>
+                        ))}
+                      </select>
+                      {eventErrors.organizationCode && (
+                        <div className="invalid-feedback">
+                          {eventErrors.organizationCode}
+                        </div>
+                      )}
+                    </div>
+                    {selectedEvent._id && (
+                      <div className="d-flex flex-wrap gap-2">
+                        {selectedEvent.status !== 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openConfirmModal("resume", "Confirmar Reanudación", "¿Estás seguro de que deseas reanudar el evento?")
+                            }
+                            className="btn btn-success"
+                          >
+                            Reanudar Evento
+                          </button>
+                        )}
+                        {selectedEvent.status !== 1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openConfirmModal("suspend", "Confirmar Suspensión", "¿Estás seguro de que deseas suspender el evento?")
+                            }
+                            className="btn btn-warning"
+                          >
+                            Suspender Evento
+                          </button>
+                        )}
+                        {selectedEvent.status !== 2 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openConfirmModal("finish", "Confirmar Finalización", "¿Estás seguro de que deseas finalizar el evento?")
+                            }
+                            className="btn btn-danger"
+                          >
+                            Finalizar Evento
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
           </div>
         </div>
+      </div>
 
-        {/* Modal de confirmación de acción */}
-        {showActionConfirmModal && (
-          <ConfirmationModal
-            id="actionConfirmModal"
-            title={confirmModalTitle}
-            message={confirmModalMessage}
-            onConfirm={handleConfirm}
-            onCancel={() => {
-              console.log("Se canceló la acción");
-              setShowActionConfirmModal(false);
-            }}
-            extraContent={
-              confirmAction === "suspend" && (
-                <>
-                  <label htmlFor="cancelInfo">Información de Cancelación:</label>
-                  <textarea
-                    id="cancelInfo"
-                    className="form-control"
-                    value={cancelInfo}
-                    onChange={(e) => setCancelInfo(e.target.value)}
-                  />
-                </>
-              )
-            }
-          />
-        )}
+      {/* Modal de confirmación de acción */}
+      {showActionConfirmModal && (
+        <ConfirmationModal
+          id="actionConfirmModal"
+          title={confirmModalTitle}
+          message={confirmModalMessage}
+          onConfirm={handleConfirm}
+          onCancel={() => {
+            console.log("Se canceló la acción");
+            setShowActionConfirmModal(false);
+          }}
+          extraContent={
+            confirmAction === "suspend" && (
+              <>
+                <label htmlFor="cancelInfo">Información de Cancelación:</label>
+                <textarea
+                  id="cancelInfo"
+                  className="form-control"
+                  value={cancelInfo}
+                  onChange={(e) => setCancelInfo(e.target.value)}
+                />
+              </>
+            )
+          }
+        />
+      )}
 
-        {/* Modal de confirmación de eliminación de evento */}
-        {showDeleteConfirmModal && (
-          <ConfirmationModal
-            id="deleteConfirmModal"
-            title="Confirmar Eliminación"
-            message={`¿Estás seguro de que deseas eliminar el evento ${eventToDelete?.name}?`}
-            onConfirm={async () => {
-              console.log("Confirmación para eliminar evento");
-              await handleDeleteConfirmed();
-              setShowDeleteConfirmModal(false);
-            }}
-            onCancel={() => {
-              console.log("Se canceló la eliminación del evento");
-              setShowDeleteConfirmModal(false);
-            }}
-            extraContent={null}
-          />
-        )}
-      </LocalHeaderLayout>
-    </>
+      {/* Modal de confirmación de eliminación de evento */}
+      {showDeleteConfirmModal && (
+        <ConfirmationModal
+          id="deleteConfirmModal"
+          title="Confirmar Eliminación"
+          message={`¿Estás seguro de que deseas eliminar el evento ${eventToDelete?.name}?`}
+          onConfirm={async () => {
+            console.log("Confirmación para eliminar evento");
+            await handleDeleteConfirmed();
+            setShowDeleteConfirmModal(false);
+          }}
+          onCancel={() => {
+            console.log("Se canceló la eliminación del evento");
+            setShowDeleteConfirmModal(false);
+          }}
+          extraContent={null}
+        />
+      )}
+    </LocalHeaderLayout>
   );
 };
 

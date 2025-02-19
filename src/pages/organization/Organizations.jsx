@@ -32,6 +32,10 @@ const Organizations = () => {
   // Ref para el final de la lista de organizaciones
   const bottomRef = useRef(null);
 
+  const breadcrumbs = [
+    { label: "Organizaciones", path: "" }
+  ];
+
   useEffect(() => {
     if (alert) {
       const timer = setTimeout(() => setAlert(null), 3000);
@@ -137,8 +141,8 @@ const Organizations = () => {
 
   return (
     <>
-      <LocalHeaderLayout title="Organizaciones" withMap={false}>
-        <div className="content-wrapper" style={{ padding: '20px', paddingBottom: '50px' }}>
+      <LocalHeaderLayout breadcrumbs={breadcrumbs}>
+        <div className="content-wrapper" style={{ paddingBottom: '50px' }}>
           {alert && (
             <Alert 
               type={alert.type} 
@@ -147,7 +151,7 @@ const Organizations = () => {
             />
           )}
           {organizations.length > 0 ? (
-            <div className="row gx-3 justify-content-center align-items-stretch">
+            <div className="row gx-3 justify-content-center align-items-stretch" style={{ backgroundColor: '#f8f9fa', borderRadius: '10px', padding: '20px' }}>
               {organizations.map(org => (
                 <OrganizationCard
                   key={org._id}
@@ -170,9 +174,12 @@ const Organizations = () => {
             </div>
           ) : (
             !loading && (
-              <p style={{ textAlign: 'center' }}>
-                No hay organizaciones registradas.
-              </p>
+              <div className="d-flex flex-column align-items-center justify-content-center my-5">
+                <i className="bi bi-exclamation-circle text-muted fs-1 mb-3"></i>
+                <p className="text-muted fs-5 m-0">
+                  No hay organizaciones registradas.
+                </p>
+              </div>
             )
           )}
 
