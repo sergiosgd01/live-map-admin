@@ -1,10 +1,57 @@
 const API_URL = 'https://api-backend-tfg.onrender.com/api/user';
 
-// Fetch para obtener el listado de usuarios
+// Inicio de sesión
+export const loginUser = async (email, password) => {
+  try {
+    const response = await fetch(`${API_URL}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }), // Envía las credenciales en el cuerpo de la solicitud
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Error en el inicio de sesión');
+    }
+    return data;
+  } catch (error) {
+    console.error('Error en el login:', error);
+    throw error;
+  }
+};
+
+// Obtener datos del usuario autenticado
+export const getCurrentUser = async () => {
+  try {
+    const token = localStorage.getItem('token'); // Recuperar el token del localStorage
+    if (!token) {
+      throw new Error('No hay token disponible');
+    }
+
+    const response = await fetch(`${API_URL}/me`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`, // Enviar el token en el encabezado
+      },
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Error al obtener los datos del usuario');
+    }
+    return data; // Devuelve los datos del usuario
+  } catch (error) {
+    console.error('Error al obtener los datos del usuario:', error.message);
+    throw error;
+  }
+};
+
+// Obtener todos los usuarios
 export const fetchAllUsers = async () => {
   try {
-    const url = `${API_URL}`; 
-    const response = await fetch(url, {
+    const response = await fetch(API_URL, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -14,15 +61,14 @@ export const fetchAllUsers = async () => {
     if (!response.ok) {
       throw new Error('Error al obtener los usuarios');
     }
-
-    const data = await response.json();
-    return data; 
+    return await response.json();
   } catch (error) {
     console.error('Error al obtener usuarios:', error.message);
     throw error;
   }
 };
 
+// Obtener un usuario por ID
 export const fetchUserById = async (id) => {
   try {
     const response = await fetch(`${API_URL}/${id}`, {
@@ -35,7 +81,6 @@ export const fetchUserById = async (id) => {
     if (!response.ok) {
       throw new Error('Error al obtener el usuario');
     }
-
     return await response.json();
   } catch (error) {
     console.error('Error al obtener el usuario:', error);
@@ -43,9 +88,10 @@ export const fetchUserById = async (id) => {
   }
 };
 
+// Crear un nuevo usuario
 export const addUser = async (newUser) => {
   try {
-    const response = await fetch(`${API_URL}`, {
+    const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -56,14 +102,12 @@ export const addUser = async (newUser) => {
     if (!response.ok) {
       throw new Error('Error al crear el usuario');
     }
-
     return await response.json();
   } catch (error) {
     console.error('Error al crear el usuario:', error);
     throw error;
   }
 };
-
 
 // Actualizar un usuario
 export const updateUser = async (id, updatedUser) => {
@@ -79,7 +123,6 @@ export const updateUser = async (id, updatedUser) => {
     if (!response.ok) {
       throw new Error('Error al actualizar el usuario');
     }
-
     return await response.json();
   } catch (error) {
     console.error('Error al actualizar el usuario:', error);
@@ -87,6 +130,7 @@ export const updateUser = async (id, updatedUser) => {
   }
 };
 
+// Eliminar un usuario
 export const deleteUser = async (id) => {
   try {
     const response = await fetch(`${API_URL}/${id}`, {
@@ -99,8 +143,7 @@ export const deleteUser = async (id) => {
     if (!response.ok) {
       throw new Error('Error al eliminar el usuario');
     }
-
-    return await response.json(); 
+    return await response.json();
   } catch (error) {
     console.error('Error al eliminar el usuario:', error);
     throw error;

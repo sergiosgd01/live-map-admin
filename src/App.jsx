@@ -1,4 +1,3 @@
-import AppRoutes from './routes';
 import AdminLayout from './layouts/AdminLayout';
 import Dashboard from './pages/Dashboard';
 
