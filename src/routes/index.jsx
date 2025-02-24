@@ -5,6 +5,7 @@ import GoogleMapsProvider from "../components/GoogleMapsProvider";
 import Home from "../pages/Home";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
+import Profile from "../pages/userMenu/Profile";
 import Users from "../pages/user/Users";
 import Organizations from "../pages/organization/Organizations";
 import Events from "../pages/event/Events";
@@ -53,6 +54,7 @@ const AppRoutes = () => (
               <Routes>
                 <Route path="/home" element={<Home />} />
                 <Route path="/users" element={<Users />} />
+                <Route path="/profile" element={<Profile />} />
                 <Route path="/organizations" element={<Organizations />} />
                 <Route path="/organizations/:organizationCode/events" element={<Events />} />
                 <Route path="/events/:eventCode/route" element={<RoutePage />} />

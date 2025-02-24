@@ -128,20 +128,6 @@ const Login = () => {
                 {errors.password && <div className="invalid-feedback">{errors.password}</div>}
               </div>
               <div className="form-options">
-                {/* <div className="remember-option">
-                  <input
-                    className="form-checkbox"
-                    type="checkbox"
-                    id="rememberPassword"
-                    name="remember"
-                    checked={formData.remember}
-                    onChange={handleChange}
-                    disabled={loading}
-                  />
-                  <label className="checkbox-label" htmlFor="rememberPassword">
-                    Recuérdame
-                  </label>
-                </div> */}
                 <Link to="/forgot-password" className="forgot-password">
                   ¿Has olvidado la contraseña?
                 </Link>

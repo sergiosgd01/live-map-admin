@@ -112,17 +112,40 @@ export const addUser = async (newUser) => {
 // Actualizar un usuario
 export const updateUser = async (id, updatedUser) => {
   try {
+    // Filtrar los campos que tienen valores definidos
+    const filteredData = {};
+    if (updatedUser.username !== undefined) {
+      filteredData.username = updatedUser.username;
+    }
+    if (updatedUser.email !== undefined) {
+      filteredData.email = updatedUser.email;
+    }
+    if (updatedUser.password !== undefined && updatedUser.password.trim() !== '') {
+      filteredData.password = updatedUser.password;
+    }
+    if (updatedUser.isAdmin !== undefined) {
+      filteredData.admin = updatedUser.isAdmin; // Asegúrate de que coincida con el campo "admin" del backend
+    }
+
+    console.log('ID del usuario:', id);
+    console.log('Datos filtrados para actualizar:', filteredData);
+
+    // Realizar la solicitud PUT al backend
     const response = await fetch(`${API_URL}/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(updatedUser),
+      body: JSON.stringify(filteredData),
     });
 
+    // Verificar si la respuesta es exitosa
     if (!response.ok) {
-      throw new Error('Error al actualizar el usuario');
+      const errorData = await response.json(); // Intenta obtener detalles del error del backend
+      console.error('Respuesta del servidor:', errorData);
+      throw new Error(errorData.message || 'Error al actualizar el usuario');
     }
+
     return await response.json();
   } catch (error) {
     console.error('Error al actualizar el usuario:', error);

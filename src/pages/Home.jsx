@@ -1,8 +1,7 @@
 import React from 'react';
-import { Helmet } from 'react-helmet';
 import Layout from '../components/Layout';
 
-const cardHeight = '300px'; // Ajusta este valor según tu diseño
+const cardHeight = '300px'; 
 
 const Home = () => {
   return (

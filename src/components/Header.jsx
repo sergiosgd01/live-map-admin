@@ -1,7 +1,7 @@
 // src/components/Header.jsx
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getCurrentUser } from '../services/userService'; // Importar el servicio
+import { getCurrentUser } from '../services/userService';
 
 const Header = () => {
   const navigate = useNavigate();
@@ -60,7 +60,7 @@ const Header = () => {
               </a>
               <div className="dropdown-menu dropdown-menu-end" aria-labelledby="userSettings">
                 <div className="header-profile-actions">
-                  <a href="profile.html">Profile</a>
+                  <a href="/profile">Profile</a>
                   <a href="account-settings.html">Settings</a>
                   {/* Botón de Logout */}
                   <a href="#!" onClick={handleLogout}>

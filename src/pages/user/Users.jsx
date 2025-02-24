@@ -49,35 +49,57 @@ const Users = () => {
     }
   };
 
-  // Función única para manejar tanto la actualización como la creación
+  // Modificamos la función que maneja la selección del usuario a editar
+  const editUser = (user) => {
+    setSelectedUser({
+      ...user,
+      password: '' // Seteamos el password vacío al cargar el usuario
+    });
+    const modalEl = document.getElementById("editContact");
+    if (modalEl) {
+      const formEl = modalEl.querySelector("form");
+      if (formEl) {
+        formEl.classList.remove("was-validated");
+      }
+    }
+  };
+
+  // Modificamos el handleSubmit para manejar el caso del password
   const handleSubmit = async (e) => {
     e.preventDefault();
     const form = e.currentTarget;
-    if (!form.checkValidity()) {
+    
+    // Validamos solo si se introdujo una nueva contraseña
+    if (selectedUser.password && !form.checkValidity()) {
       e.stopPropagation();
       form.classList.add("was-validated");
       return;
     }
+
     const modalEl = document.getElementById("editContact");
     const modal = window.bootstrap.Modal.getInstance(modalEl);
     
-    if (selectedUser._id) {
-      try {
-        await updateUser(selectedUser._id, selectedUser);
-        setUsers(users.map(u => u._id === selectedUser._id ? selectedUser : u));
+    try {
+      if (selectedUser._id) { 
+        // Creamos un objeto con los datos a actualizar
+        const userDataToUpdate = { ...selectedUser };
+        
+        // Si no se introdujo nueva contraseña, eliminamos el campo password
+        if (!selectedUser.password) {
+          delete userDataToUpdate.password;
+        }
+        
+        await updateUser(selectedUser._id, userDataToUpdate);
+        setUsers(users.map(u => u._id === selectedUser._id ? userDataToUpdate : u));
         if (modal) modal.hide();
-      } catch (err) {
-        setError(`Error al actualizar el usuario: ${err.message}`);
-      }
-    } else {
-      try {
+      } else {
         await addUser(selectedUser);
         const data = await fetchAllUsers();
         setUsers(data);
         if (modal) modal.hide();
-      } catch (err) {
-        setError(`Error al crear el usuario: ${err.message}`);
       }
+    } catch (err) {
+      setError(`Error al ${selectedUser._id ? 'actualizar' : 'crear'} el usuario: ${err.message}`);
     }
   };
 
@@ -100,7 +122,7 @@ const Users = () => {
                     data-bs-toggle="modal"
                     data-bs-target="#editContact"
                     onClick={() => {
-                      setSelectedUser(user);
+                      editUser(user);
                       const modalEl = document.getElementById("editContact");
                       if (modalEl) {
                         const formEl = modalEl.querySelector("form");
@@ -189,14 +211,12 @@ const Users = () => {
                       <div className="col-12 col-sm-6">
                         <div className="mb-3">
                           <label htmlFor="contactNumber" className="form-label">Contraseña</label>
-                          <input 
-                            type="password" 
+                          <input
+                            type="password"
                             className="form-control" 
-                            id="contactNumber" 
-                            value={selectedUser.password || ""}
+                            value={selectedUser.password}
                             onChange={(e) => setSelectedUser({ ...selectedUser, password: e.target.value })}
-                            placeholder="Contraseña"
-                            required
+                            placeholder="Nueva contraseña"
                             pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{6,20}$"
                             title="La contraseña debe tener entre 6 y 20 caracteres, contener al menos una mayúscula, una minúscula y un número"
                           />
