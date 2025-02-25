@@ -52,7 +52,7 @@ const Header = () => {
           <div className="header-profile d-flex align-items-center">
             <div className="dropdown">
               <a href="#" id="userSettings" className="user-settings" data-toggle="dropdown" aria-haspopup="true">
-                <span className="user-name d-none d-md-block">{userName}</span> {/* Mostrar el nombre del usuario */}
+                <span className="user-name d-none d-md-block">{userName}</span> 
                 <span className="avatar">
                   <img src="/assets/images/user2.png" alt="Admin Templates" />
                   <span className="status online"></span>
@@ -61,7 +61,7 @@ const Header = () => {
               <div className="dropdown-menu dropdown-menu-end" aria-labelledby="userSettings">
                 <div className="header-profile-actions">
                   <a href="/profile">Profile</a>
-                  <a href="account-settings.html">Settings</a>
+                  <a href="/settings">Settings</a>
                   {/* Botón de Logout */}
                   <a href="#!" onClick={handleLogout}>
                     Logout

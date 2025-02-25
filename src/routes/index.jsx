@@ -1,11 +1,13 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import GoogleMapsProvider from "../components/GoogleMapsProvider";
+import useAuth from "../hooks/useAuth";
 
 import Home from "../pages/Home";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import Profile from "../pages/userMenu/Profile";
+import Settings from "../pages/userMenu/Settings";
 import Users from "../pages/user/Users";
 import Organizations from "../pages/organization/Organizations";
 import Events from "../pages/event/Events";
@@ -18,8 +20,13 @@ import ServicePage from "../pages/event/service/ServicePage";
 import ServiceType from "../pages/event/service/ServiceType";
 import Device from "../pages/event/device/Device";
 
+// Componente ProtectedRoute: Verifica si el usuario está autenticado
 const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = !!localStorage.getItem('token');
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <div>Cargando...</div>; // Muestra un spinner mientras se verifica el token
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -28,6 +35,7 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// Componente principal de las rutas de la aplicación
 const AppRoutes = () => (
   <Router>
     <Routes>
@@ -35,16 +43,16 @@ const AppRoutes = () => (
       <Route
         path="/"
         element={
-          localStorage.getItem('token') ? (
+          <ProtectedRoute>
             <Navigate to="/home" replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
+          </ProtectedRoute>
         }
       />
+
       {/* Rutas públicas */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+
       {/* Rutas protegidas envueltas en GoogleMapsProvider */}
       <Route
         path="/*"
@@ -55,6 +63,7 @@ const AppRoutes = () => (
                 <Route path="/home" element={<Home />} />
                 <Route path="/users" element={<Users />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="/organizations" element={<Organizations />} />
                 <Route path="/organizations/:organizationCode/events" element={<Events />} />
                 <Route path="/events/:eventCode/route" element={<RoutePage />} />
