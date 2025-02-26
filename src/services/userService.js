@@ -1,6 +1,6 @@
 const API_URL = 'https://api-backend-tfg.onrender.com/api/user';
 
-// Inicio de sesión
+// Login de usuario
 export const loginUser = async (email, password) => {
   try {
     const response = await fetch(`${API_URL}/login`, {
@@ -8,11 +8,16 @@ export const loginUser = async (email, password) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password }), // Envía las credenciales en el cuerpo de la solicitud
+      body: JSON.stringify({ email, password }),
     });
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data.message || 'Error en el inicio de sesión');
+    }
+    // Guardamos el token y los datos del usuario
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
     }
     return data;
   } catch (error) {
@@ -21,10 +26,36 @@ export const loginUser = async (email, password) => {
   }
 };
 
+// Registro de usuario
+export const registerUser = async (userData) => {
+  try {
+    const response = await fetch(`${API_URL}/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Error en el registro');
+    }
+    // Guardamos el token y los datos del usuario si el registro es exitoso
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+    }
+    return data;
+  } catch (error) {
+    console.error('Error en el registro:', error);
+    throw error;
+  }
+};
+
 // Obtener datos del usuario autenticado
 export const getCurrentUser = async () => {
   try {
-    const token = localStorage.getItem('token'); // Recuperar el token del localStorage
+    const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('No hay token disponible');
     }
@@ -33,7 +64,7 @@ export const getCurrentUser = async () => {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`, // Enviar el token en el encabezado
+        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -41,9 +72,9 @@ export const getCurrentUser = async () => {
     if (!response.ok) {
       throw new Error(data.message || 'Error al obtener los datos del usuario');
     }
-    return data; // Devuelve los datos del usuario
+    return data;
   } catch (error) {
-    console.error('Error al obtener los datos del usuario:', error.message);
+    console.error('Error al obtener los datos del usuario:', error);
     throw error;
   }
 };
@@ -51,10 +82,12 @@ export const getCurrentUser = async () => {
 // Obtener todos los usuarios
 export const fetchAllUsers = async () => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(API_URL, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -63,46 +96,29 @@ export const fetchAllUsers = async () => {
     }
     return await response.json();
   } catch (error) {
-    console.error('Error al obtener usuarios:', error.message);
+    console.error('Error al obtener usuarios:', error);
     throw error;
   }
 };
 
-// Obtener un usuario por ID
-export const fetchUserById = async (id) => {
-  try {
-    const response = await fetch(`${API_URL}/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Error al obtener el usuario');
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error al obtener el usuario:', error);
-    throw error;
-  }
-};
-
-// Crear un nuevo usuario
+// Crear un nuevo usuario (solo superAdmin)
 export const addUser = async (newUser) => {
   try {
-    const response = await fetch(API_URL, {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/add`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(newUser),
     });
 
+    const data = await response.json();
     if (!response.ok) {
-      throw new Error('Error al crear el usuario');
+      throw new Error(data.message || 'Error al crear el usuario');
     }
-    return await response.json();
+    return data;
   } catch (error) {
     console.error('Error al crear el usuario:', error);
     throw error;
@@ -112,41 +128,21 @@ export const addUser = async (newUser) => {
 // Actualizar un usuario
 export const updateUser = async (id, updatedUser) => {
   try {
-    // Filtrar los campos que tienen valores definidos
-    const filteredData = {};
-    if (updatedUser.username !== undefined) {
-      filteredData.username = updatedUser.username;
-    }
-    if (updatedUser.email !== undefined) {
-      filteredData.email = updatedUser.email;
-    }
-    if (updatedUser.password !== undefined && updatedUser.password.trim() !== '') {
-      filteredData.password = updatedUser.password;
-    }
-    if (updatedUser.isAdmin !== undefined) {
-      filteredData.admin = updatedUser.isAdmin; // Asegúrate de que coincida con el campo "admin" del backend
-    }
-
-    console.log('ID del usuario:', id);
-    console.log('Datos filtrados para actualizar:', filteredData);
-
-    // Realizar la solicitud PUT al backend
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_URL}/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(filteredData),
+      body: JSON.stringify(updatedUser),
     });
 
-    // Verificar si la respuesta es exitosa
+    const data = await response.json();
     if (!response.ok) {
-      const errorData = await response.json(); // Intenta obtener detalles del error del backend
-      console.error('Respuesta del servidor:', errorData);
-      throw new Error(errorData.message || 'Error al actualizar el usuario');
+      throw new Error(data.message || 'Error al actualizar el usuario');
     }
-
-    return await response.json();
+    return data;
   } catch (error) {
     console.error('Error al actualizar el usuario:', error);
     throw error;
@@ -156,17 +152,20 @@ export const updateUser = async (id, updatedUser) => {
 // Eliminar un usuario
 export const deleteUser = async (id) => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_URL}/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
       },
     });
 
+    const data = await response.json();
     if (!response.ok) {
-      throw new Error('Error al eliminar el usuario');
+      throw new Error(data.message || 'Error al eliminar el usuario');
     }
-    return await response.json();
+    return data;
   } catch (error) {
     console.error('Error al eliminar el usuario:', error);
     throw error;

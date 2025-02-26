@@ -61,7 +61,6 @@ const Header = () => {
               <div className="dropdown-menu dropdown-menu-end" aria-labelledby="userSettings">
                 <div className="header-profile-actions">
                   <a href="/profile">Profile</a>
-                  <a href="/settings">Settings</a>
                   {/* Botón de Logout */}
                   <a href="#!" onClick={handleLogout}>
                     Logout

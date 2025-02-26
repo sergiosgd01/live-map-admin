@@ -1,7 +1,7 @@
 import React from 'react';
 import Layout from '../components/Layout';
 
-const cardHeight = '300px'; 
+const cardHeight = '400px';
 
 const Home = () => {
   return (
@@ -13,22 +13,27 @@ const Home = () => {
             <div className="hero-header shade-primary"></div>
 
             {/* Sección inferior: fondo blanco con cartas centradas */}
-            <div className="hero-body" style={{ minHeight: '50vh' }}>
-              {/* Contenedor para centrar vertical y horizontalmente */}
+            <div className="hero-body" style={{ minHeight: '70vh' }}>
               <div className="d-flex align-items-center justify-content-center" style={{ height: '100%' }}>
                 <div className="container">
-                  <div className="row justify-content-center align-items-stretch">
+                  <div className="row justify-content-center align-items-stretch g-4">
                     
-                    {/* Tarjeta Usuarios */}
-                    <div className="col-12 col-md-6 col-lg-5 mb-4">
+                    {/* Tarjeta Usuarios - Ajustamos el tamaño de columna */}
+                    <div className="col-12 col-md-8 col-lg-6 mb-4">
                       <a 
                         href="/users" 
                         className="tile-link d-flex flex-column align-items-center text-center rounded-2 p-5"
-                        style={{ height: cardHeight }}
+                        style={{ 
+                          height: cardHeight,
+                          transition: 'transform 0.3s ease',
+                          ':hover': {
+                            transform: 'scale(1.02)'
+                          }
+                        }}
                       >
                         <div 
                           className="icon-container" 
-                          style={{ width: '80px', height: '80px' }}
+                          style={{ width: '120px', height: '120px' }}
                         >
                           <img 
                             src="assets/images/users.svg" 
@@ -38,13 +43,13 @@ const Home = () => {
                           />
                         </div>
                         <div 
-                          className="content mt-3 d-flex flex-column justify-content-center w-100"
+                          className="content mt-4 d-flex flex-column justify-content-center w-100"
                           style={{ flex: 1 }}
                         >
-                          <h5 className="fw-bold fs-2 mb-2">Usuarios</h5>
+                          <h5 className="fw-bold fs-1 mb-3">Usuarios</h5>
                           <p 
-                            className="fs-5 mb-0"
-                            style={{ overflow: 'hidden', textOverflow: 'ellipsis' /*, whiteSpace: 'nowrap' si solo quieres una línea */ }}
+                            className="fs-4 mb-0"
+                            style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                           >
                             Gestiona los usuarios
                           </p>
@@ -52,16 +57,22 @@ const Home = () => {
                       </a>
                     </div>
                     
-                    {/* Tarjeta Organizaciones */}
-                    <div className="col-12 col-md-6 col-lg-5 mb-4">
+                    {/* Tarjeta Organizaciones - Ajustamos el tamaño de columna */}
+                    <div className="col-12 col-md-8 col-lg-6 mb-4">
                       <a 
                         href="/organizations" 
                         className="tile-link d-flex flex-column align-items-center text-center rounded-2 p-5"
-                        style={{ height: cardHeight }}
+                        style={{ 
+                          height: cardHeight,
+                          transition: 'transform 0.3s ease',
+                          ':hover': {
+                            transform: 'scale(1.02)'
+                          }
+                        }}
                       >
                         <div 
                           className="icon-container" 
-                          style={{ width: '80px', height: '80px' }}
+                          style={{ width: '120px', height: '120px' }}
                         >
                           <img 
                             src="assets/images/group.svg" 
@@ -71,12 +82,12 @@ const Home = () => {
                           />
                         </div>
                         <div 
-                          className="content mt-3 d-flex flex-column justify-content-center w-100"
+                          className="content mt-4 d-flex flex-column justify-content-center w-100"
                           style={{ flex: 1 }}
                         >
-                          <h5 className="fw-bold fs-2 mb-2">Organizaciones</h5>
+                          <h5 className="fw-bold fs-1 mb-3">Organizaciones</h5>
                           <p 
-                            className="fs-5 mb-0"
+                            className="fs-4 mb-0"
                             style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                           >
                             Gestiona las organizaciones

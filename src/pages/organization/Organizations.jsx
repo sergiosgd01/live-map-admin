@@ -14,7 +14,7 @@ import LocalHeaderLayout from '../../components/LocalHeaderLayout';
 import OrganizationCard from '../../components/OrganizationCard';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import Spinner from '../../components/Spinner';
-import FloatingAddButton from '../../components/FloatingAddButton'; // Importa el FloatingAddButton
+import FloatingAddButton from '../../components/FloatingAddButton'; 
 
 const Organizations = () => {
   const [organizations, setOrganizations] = useState([]);
@@ -32,6 +32,8 @@ const Organizations = () => {
   // Ref para el final de la lista de organizaciones
   const bottomRef = useRef(null);
 
+  const currentUser = JSON.parse(localStorage.getItem('user'));
+
   const breadcrumbs = [
     { label: "Organizaciones", path: "" }
   ];
@@ -47,14 +49,43 @@ const Organizations = () => {
     const loadOrganizations = async () => {
       try {
         const data = await fetchOrganizations();
-        setOrganizations(data);
+        
+        // Asegurarnos de que tenemos los datos correctos
+        if (!currentUser) {
+          console.error('No hay usuario en el localStorage');
+          setError('No se pudo cargar la información del usuario');
+          return;
+        }
+  
+        // Filtrar las organizaciones
+        let filteredOrganizations;
+        console.log({ currentUser });
+        if (currentUser.isSuperAdmin) {
+          filteredOrganizations = data;
+        } else {
+          filteredOrganizations = data.filter(org => 
+            currentUser.adminOf?.some(adminOrg => 
+              String(adminOrg.id) === String(org._id) || 
+              String(adminOrg._id) === String(org._id)
+            )
+          );
+        }
+  
+        console.log({
+          user: currentUser,
+          originalData: data,
+          filtered: filteredOrganizations
+        });
+  
+        setOrganizations(filteredOrganizations);
       } catch (err) {
+        console.error('Error al cargar organizaciones:', err);
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
-
+  
     loadOrganizations();
   }, []);
 
@@ -184,23 +215,23 @@ const Organizations = () => {
           )}
 
           {/* Uso del FloatingAddButton para agregar una nueva organización */}
-          <FloatingAddButton
-            onClick={() => {
-              setErrors({});
-              setSelectedOrganization({ name: '', code: '', image: '' });
-              const modalEl = document.getElementById("editOrganization");
-              if (modalEl) {
-                const formEl = modalEl.querySelector("form");
-                if (formEl) {
-                  formEl.classList.remove("was-validated");
+          {currentUser.isSuperAdmin && (
+            <FloatingAddButton
+              onClick={() => {
+                setErrors({});
+                setSelectedOrganization({ name: '', code: '', image: '' });
+                const modalEl = document.getElementById("editOrganization");
+                if (modalEl) {
+                  const formEl = modalEl.querySelector("form");
+                  if (formEl) {
+                    formEl.classList.remove("was-validated");
+                  }
+                  const modal = new window.bootstrap.Modal(modalEl);
+                  modal.show();
                 }
-                const modal = new window.bootstrap.Modal(modalEl);
-                modal.show();
-              } else {
-                console.error("No se encontró el modal 'editOrganization'");
-              }
-            }}
-          />
+              }}
+            />
+          )}
         </div>
 
         {/* Modal para editar / agregar organización */}
