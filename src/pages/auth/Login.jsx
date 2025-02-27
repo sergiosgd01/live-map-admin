@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { loginUser } from "../../services/userService";
+import ConfirmationModal from "../../components/ConfirmationModal"; // Importa el componente
 import "../../styles/Auth.css";
 
 const Login = () => {
@@ -9,11 +10,11 @@ const Login = () => {
     password: "",
     remember: false,
   });
-  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [loginFailed, setLoginFailed] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // Estado para controlar el modal
 
   const togglePasswordVisibility = () => {
     setShowPassword((prevShowPassword) => !prevShowPassword);
@@ -25,7 +26,6 @@ const Login = () => {
       ...prevState,
       [name]: type === "checkbox" ? checked : value,
     }));
-    setErrors((prevErrors) => ({ ...prevErrors, [name]: "" }));
     setLoginFailed(false);
     setErrorMessage("");
   };
@@ -33,49 +33,45 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const form = e.currentTarget;
-  
+
     if (!form.checkValidity()) {
       e.stopPropagation();
       form.classList.add("was-validated");
       return;
     }
-  
+
     setLoading(true);
     setLoginFailed(false);
     setErrorMessage("");
-    setErrors({});
-  
+
     try {
       const response = await loginUser(formData.email, formData.password);
-  
+
       if (response.success) {
-        // Verificar permisos
         const user = response.user;
-        
-        // Si no es superAdmin y no tiene organizaciones para administrar
+
         if (!user.isSuperAdmin && (!user.adminOf || user.adminOf.length === 0)) {
           setLoginFailed(true);
-          setErrorMessage("No tienes permisos para acceder al panel de administrador");
-          // No establecer mensajes de error en los campos individuales
-          // Limpiar localStorage por si acaso
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          setErrorMessage(
+            "No tienes permisos para acceder al panel de administrador"
+          );
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
           return;
         }
-  
-        // Guardar datos en localStorage
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-  
-        // Redirigir según el tipo de usuario
-        console.log(user);
+
+        localStorage.setItem("token", response.token);
+        localStorage.setItem("user", JSON.stringify(response.user));
+
         if (user.isSuperAdmin) {
           window.location.href = "/home";
         } else {
           window.location.href = "/organizations";
         }
       } else {
-        setErrorMessage("Credenciales incorrectas. Por favor, verifica tu email y contraseña.");
+        setErrorMessage(
+          "Credenciales incorrectas. Por favor, verifica tu email y contraseña."
+        );
         setLoginFailed(true);
       }
     } catch (error) {
@@ -84,6 +80,16 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Función para abrir el modal
+  const openModal = () => {
+    setIsModalOpen(true);
+  };
+
+  // Función para cerrar el modal
+  const closeModal = () => {
+    setIsModalOpen(false);
   };
 
   return (
@@ -101,9 +107,7 @@ const Login = () => {
               </div>
               <h5 className="login-title">Inicia sesión con tu cuenta</h5>
               {loginFailed && (
-                <div className="error-message">
-                  {errorMessage}
-                </div>
+                <div className="error-message">{errorMessage}</div>
               )}
               <div className="form-group">
                 <input
@@ -141,12 +145,21 @@ const Login = () => {
                 </button>
               </div>
               <div className="form-options">
-                <Link to="/forgot-password" className="forgot-password">
+                {/* Enlace para abrir el modal */}
+                <span
+                  className="forgot-password"
+                  style={{ cursor: "pointer" }}
+                  onClick={openModal}
+                >
                   ¿Has olvidado la contraseña?
-                </Link>
+                </span>
               </div>
               <div className="login-button-container">
-                <button type="submit" className="login-button" disabled={loading}>
+                <button
+                  type="submit"
+                  className="login-button"
+                  disabled={loading}
+                >
                   {loading ? "Iniciando sesión..." : "Inicia sesión"}
                 </button>
               </div>
@@ -159,6 +172,24 @@ const Login = () => {
             </div>
           </div>
         </form>
+
+        {/* Modal de recuperación de contraseña */}
+        {isModalOpen && (
+          <ConfirmationModal
+            title="Recuperación de contraseña"
+            message={
+              <>
+                Para solicitar una nueva contraseña, por favor, ponte en contacto
+                con el administrador de la aplicación.
+                <br />
+                Puedes enviar un correo electrónico a:{" "}
+                <a href="mailto:admin@liveMap.com">admin@liveMap.com</a>
+              </>
+            }
+            onCancel={closeModal} 
+            onConfirm={closeModal} 
+          />
+        )}
       </div>
     </div>
   );

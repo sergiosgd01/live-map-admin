@@ -91,7 +91,6 @@ const ConfirmationModal = ({ id, title, message, onConfirm, onCancel, extraConte
             </button>
             <button 
               onClick={() => { 
-                console.log("Botón Confirmar clicado en el modal"); 
                 onConfirm(); 
               }}
               className="modal-button confirm-button"

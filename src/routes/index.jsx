@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import GoogleMapsProvider from "../components/GoogleMapsProvider";
 import useAuth from "../hooks/useAuth";
+import Spinner from "../components/Spinner";
 
 import Home from "../pages/Home";
 import Login from "../pages/auth/Login";
@@ -24,7 +25,7 @@ const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return <div>Cargando...</div>; // Muestra un spinner mientras se verifica el token
+    return <Spinner />; // Muestra un spinner mientras se verifica el token
   }
 
   if (!isAuthenticated) {
