@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LocalHeaderLayout from '../../components/LocalHeaderLayout'; 
-import { getCurrentUser, updateUser } from '../../services/userService'; 
+import { updateUser } from '../../services/userService'; 
+import useAuth from '../../hooks/useAuth'; // Importamos el hook useAuth
 import Spinner from '../../components/Spinner'
 import Alert from '../../components/Alert';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const [userData, setUserData] = useState(null);
+  const { userData, loading: authLoading } = useAuth(); // Utilizamos el hook useAuth
   const [activeTab, setActiveTab] = useState('general');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState(null);
 
   useEffect(() => {
@@ -39,34 +40,16 @@ const Profile = () => {
     alerts: false
   });
 
-  // Efecto para cargar los datos del usuario al montar el componente
+  // Efecto para configurar los datos del formulario cuando userData esté disponible
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-
-        const user = await getCurrentUser();
-        setUserData(user);
-        
-        setFormData({
-          username: user.username || '',
-          email: user.email || '',
-          password: ''
-        });
-      } catch (error) {
-        console.error('No se pudo cargar los datos del usuario:', error.message);
-        navigate('/login');
-      } finally {
-        setLoading(false); // Desactivamos el loading cuando termine la carga
-      }
-    };
-
-    fetchUserData();
-  }, [navigate]);
+    if (userData) {
+      setFormData({
+        username: userData.username || '',
+        email: userData.email || '',
+        password: ''
+      });
+    }
+  }, [userData]);
 
   // Manejador para los cambios en los campos del formulario
   const handleInputChange = (e) => {
@@ -127,11 +110,13 @@ const Profile = () => {
   // Función para manejar el envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (!validateForm()) {
       return;
     }
-
+  
+    setLoading(true);
+  
     try {
       // Construir el objeto de usuario actualizado
       const updatedUser = {
@@ -139,28 +124,44 @@ const Profile = () => {
         email: formData.email,
         isAdmin: userData?.isAdmin || 0
       };
-
+  
       // Solo incluir la contraseña si se proporciona un valor nuevo
       if (formData.password && formData.password.trim() !== '') {
         updatedUser.password = formData.password;
       }
-
-      const userId = userData?._id;
-
+  
+      const userId = userData?.id || userData?._id;
+  
       // Llamar al servicio para actualizar los datos del usuario
       await updateUser(userId, updatedUser);
-
-      // Actualizar los datos del usuario en el estado
-      setUserData({
-        ...userData,
-        ...updatedUser
-      });
-
+  
+      // Actualizar los datos del usuario en localStorage
+      const userDataFromStorage = localStorage.getItem('user');
+      if (userDataFromStorage) {
+        const parsedUserData = JSON.parse(userDataFromStorage);
+        const updatedUserData = {
+          ...parsedUserData,
+          username: formData.username,
+          email: formData.email
+        };
+        localStorage.setItem('user', JSON.stringify(updatedUserData));
+      }
+  
       setAlert({ type: 'success', message: 'Usuario actualizado correctamente' });
-
     } catch (error) {
       console.error('Error al actualizar el usuario:', error.message);
-      setAlert({ type: 'danger', message: 'Error al actualizar el usuario: ' + error.message });
+      
+      // Si el error es de email duplicado, también actualizar los errores de validación
+      if (error.message.includes('email ya está en uso')) {
+        setErrors(prev => ({
+          ...prev,
+          email: 'El email ya está en uso por otro usuario.'
+        }));
+      }
+      
+      setAlert({ type: 'danger', message: error.message });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -182,7 +183,14 @@ const Profile = () => {
     }
   };
 
-  if (loading) return <Spinner />;
+  // Mostrar spinner mientras carga la autenticación
+  if (authLoading || loading) return <Spinner />;
+
+  // Si no hay datos de usuario, redirigir al login
+  if (!userData && !authLoading) {
+    navigate('/login');
+    return null;
+  }
 
   return (
     <LocalHeaderLayout breadcrumbs={[{ label: "Perfil de Usuario", path: "" }]}>

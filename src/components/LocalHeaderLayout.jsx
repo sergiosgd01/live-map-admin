@@ -17,7 +17,7 @@ const LocalHeaderLayout = ({ breadcrumbs = [], children }) => {
       <Layout>
         {/* Header con ícono y título */}
         <div
-          className="main-header d-flex align-items-center justify-content-between position-relative border-top"
+          className="main-header d-flex align-items-center justify-content-between position-relative border-top d-none d-md-flex"
           style={{ height: `${LOCAL_HEADER_HEIGHT}px` }}
         >
           <div className="d-flex align-items-center justify-content-center">

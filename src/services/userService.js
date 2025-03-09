@@ -125,7 +125,6 @@ export const addUser = async (newUser) => {
   }
 };
 
-// Actualizar un usuario
 export const updateUser = async (id, updatedUser) => {
   try {
     const token = localStorage.getItem('token');
@@ -137,11 +136,17 @@ export const updateUser = async (id, updatedUser) => {
       },
       body: JSON.stringify(updatedUser),
     });
-
+    
     const data = await response.json();
+    
     if (!response.ok) {
+      // Capturar específicamente errores como el de email duplicado (400)
+      if (response.status === 400 && data.message.includes('email ya está en uso')) {
+        throw new Error('El email ya está en uso por otro usuario.');
+      }
       throw new Error(data.message || 'Error al actualizar el usuario');
     }
+    
     return data;
   } catch (error) {
     console.error('Error al actualizar el usuario:', error);

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import LocalHeaderLayout from "../../../components/LocalHeaderLayout";
-import EditLocation from "./EditLocation";
+import EditLocation from "./EditLocation_Improve";
 import SharedMap from "../../../components/SharedMap";
 import Spinner from "../../../components/Spinner";
 import { fetchEventByCode } from "../../../services/eventService";

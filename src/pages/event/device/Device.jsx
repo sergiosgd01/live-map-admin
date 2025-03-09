@@ -122,7 +122,7 @@ const Device = () => {
 
   return (
     <LocalHeaderLayout breadcrumbs={breadcrumbs}>
-      <div className="content-wrapper" style={{ padding: "20px" }}>
+      <div className="content-wrapper" style={{ padding: "50px" }}>
         {alert && (
           <Alert
             type={alert.type}
@@ -175,39 +175,40 @@ const Device = () => {
                       <td>{device.deviceID}</td>
                       <td>{device.eventCode}</td>
                       <td>
-                        <button
-                          onClick={() => {
-                            setSelectedDeviceForEdit(device);
-                            setEditErrors({});
-                            const modalEl = document.getElementById("editDeviceModal");
-                            if (modalEl) {
-                              const formEl = modalEl.querySelector("form");
-                              if (formEl) formEl.classList.remove("was-validated");
-                              const modal = new window.bootstrap.Modal(modalEl);
-                              modal.show();
-                            } else {
-                              console.error("No se encontró el modal 'editDeviceModal'");
-                            }
-                          }}
-                          className="btn btn-primary"
-                          style={{
-                            padding: "5px 10px",
-                            borderRadius: "5px",
-                            marginRight: "10px",
-                          }}
-                        >
-                          <i className="bi bi-pencil"></i>
-                        </button>
-                        <button
-                          onClick={() => setDeviceToDelete(device)}
-                          className="btn btn-danger"
-                          style={{
-                            padding: "5px 10px",
-                            borderRadius: "5px",
-                          }}
-                        >
-                          <i className="bi bi-trash"></i>
-                        </button>
+                        <div className="d-flex flex-column flex-md-row justify-content-center">
+                          <button
+                            onClick={() => {
+                              setSelectedDeviceForEdit(device);
+                              setEditErrors({});
+                              const modalEl = document.getElementById("editDeviceModal");
+                              if (modalEl) {
+                                const formEl = modalEl.querySelector("form");
+                                if (formEl) formEl.classList.remove("was-validated");
+                                const modal = new window.bootstrap.Modal(modalEl);
+                                modal.show();
+                              } else {
+                                console.error("No se encontró el modal 'editDeviceModal'");
+                              }
+                            }}
+                            className="btn btn-primary mb-2 mb-md-0 me-md-2"
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: "5px",
+                            }}
+                          >
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                          <button
+                            onClick={() => setDeviceToDelete(device)}
+                            className="btn btn-danger"
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: "5px",
+                            }}
+                          >
+                            <i className="bi bi-trash"></i>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

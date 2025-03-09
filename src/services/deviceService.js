@@ -6,7 +6,6 @@ const API_URL = 'https://api-backend-tfg.onrender.com/api/device';
  */
 export const fetchDevicesByEventCode = async (eventCode) => {
   try {
-    console.log('fetchDevicesByEventCode', eventCode);
     const response = await fetch(`${API_URL}/devices-by-event/${eventCode}`);
     if (!response.ok) {
       throw new Error('Error al obtener los dispositivos para el evento');

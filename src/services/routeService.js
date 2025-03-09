@@ -95,7 +95,7 @@ export const fetchDeleteAllRoutes = async (code, deviceID) => {
 };
 
 // Actualizar el estado de visitado de los puntos de ruta
-export const updateVisitedStatus = async (pointIds) => {
+export const fetchUpdateVisitedStatus = async (pointIds) => {
   try {
     const response = await fetch(`${API_URL}/update-visited`, {
       method: 'PATCH',
@@ -117,21 +117,19 @@ export const updateVisitedStatus = async (pointIds) => {
   }
 };
 
-// Resetear el estado de visitado por código de evento
-export const resetVisitedStatusByEventCode = async (code) => {
+export const fetchResetVisitedStatusByEventCode = async (code) => {
   try {
     const response = await fetch(`${API_URL}/reset-visited/${code}`, {
       method: 'PATCH',
     });
 
     if (!response.ok) {
-      throw new Error('Error al resetear el estado de visitado');
+      throw new Error('Error al resetear el estado de visited');
     }
 
-    const data = await response.json();
-    return data;
+    console.log(`Estado de visited reseteado para la ruta con código: ${code}`);
   } catch (error) {
-    console.error('Error al resetear el estado de visitado:', error);
-    throw new Error('Error de red, por favor intente de nuevo');
+    console.error('Error en fetchResetVisitedStatusByEventCode:', error);
+    throw error;
   }
 };

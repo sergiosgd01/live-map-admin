@@ -1,12 +1,11 @@
-// src/components/Header.jsx
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getCurrentUser } from '../services/userService';
+import useAuth from '../hooks/useAuth';
 
 const Header = () => {
   const navigate = useNavigate();
-  const [userName, setUserName] = useState(''); // Estado para almacenar el nombre del usuario
-
+  const { userData } = useAuth(); // Usa el hook centralizado
+  
   // Función para manejar el logout
   const handleLogout = () => {
     // Eliminar el token y los datos del usuario del localStorage
@@ -15,26 +14,6 @@ const Header = () => {
     // Redirigir al usuario a la página de login
     navigate('/login');
   };
-
-  // Efecto para cargar el nombre del usuario al montar el componente
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const userData = await getCurrentUser(); // Llamar al servicio para obtener los datos del usuario
-        console.log('Datos del usuario:', userData); // Depuración
-        setUserName(userData.username || 'Usuario'); // Usar el nombre del usuario o un valor predeterminado
-      } catch (error) {
-        console.error('No se pudo cargar el nombre del usuario:', error.message);
-        setUserName('Usuario'); // Valor predeterminado si hay un error
-      }
-    };
-
-    // Verificar si hay un token antes de intentar cargar los datos del usuario
-    const token = localStorage.getItem('token');
-    if (token) {
-      fetchUserData();
-    }
-  }, []); // Se ejecuta solo una vez al montar el componente
 
   return (
     <div className="header">
@@ -52,7 +31,9 @@ const Header = () => {
           <div className="header-profile d-flex align-items-center">
             <div className="dropdown">
               <a href="#" id="userSettings" className="user-settings" data-toggle="dropdown" aria-haspopup="true">
-                <span className="user-name d-none d-md-block">{userName}</span> 
+                <span className="user-name d-none d-md-block">
+                  {userData?.username || 'Usuario'}
+                </span> 
                 <span className="avatar">
                   <img src="/assets/images/user2.png" alt="Admin Templates" />
                   <span className="status online"></span>

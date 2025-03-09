@@ -15,6 +15,8 @@ const Users = () => {
   const [userToDelete, setUserToDelete] = useState(null);
   const [organizations, setOrganizations] = useState([]);
   const [alert, setAlert] = useState(null);
+  const [errors, setErrors] = useState({});
+
   // Nuevo estado para el ordenamiento
   const [sortConfig, setSortConfig] = useState({
     key: null,
@@ -84,7 +86,7 @@ const Users = () => {
       ...user,
       password: '',
       adminOf: user.adminOf.map(org => ({
-        id: org._id || org.id,
+        id: org._id,
         name: org.name
       }))
     });
@@ -138,42 +140,56 @@ const Users = () => {
     });
   };
 
+  // Función para manejar cambios en los campos del formulario
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setSelectedUser((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    // Limpiar el error específico cuando el usuario comienza a editar el campo
+    setErrors((prevErrors) => ({
+      ...prevErrors,
+      [name]: null,
+    }));
+  };
+
   // Manejar envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
     const form = e.currentTarget;
-    
+
+    // Limpiar errores previos
+    setErrors({});
+
     // Validar contraseña
     if (selectedUser.password) {
       const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{6,20}$/;
       if (!passwordPattern.test(selectedUser.password)) {
-        setAlert({ 
-          type: 'danger', 
-          message: 'La contraseña debe cumplir con los requisitos de formato' 
-        });
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          password: 'La contraseña debe cumplir con los requisitos de formato',
+        }));
         return;
       }
     }
-  
+
     // Para nuevos usuarios, la contraseña es obligatoria
     if (!selectedUser.id && !selectedUser.password) {
-      setAlert({ 
-        type: 'danger', 
-        message: 'La contraseña es obligatoria para nuevos usuarios' 
-      });
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        password: 'La contraseña es obligatoria para nuevos usuarios',
+      }));
       return;
     }
-  
-    // Validación del formulario
+
+    // Validación del formulario HTML5
     if (!form.checkValidity()) {
       e.stopPropagation();
       form.classList.add("was-validated");
       return;
     }
-  
-    const modalEl = document.getElementById("editContact");
-    const modal = window.bootstrap.Modal.getInstance(modalEl);
-    
+
     try {
       if (selectedUser.id) {
         // Actualizar usuario existente
@@ -181,21 +197,25 @@ const Users = () => {
           username: selectedUser.username,
           email: selectedUser.email,
           isSuperAdmin: selectedUser.isSuperAdmin,
-          adminOf: selectedUser.adminOf?.map(org => org.id) || []
+          adminOf: selectedUser.adminOf?.map(org => org.id) || [],
         };
-        
+
         // Solo incluir password si se ha introducido uno nuevo
         if (selectedUser.password) {
           userDataToUpdate.password = selectedUser.password;
         }
-        
+
         const response = await updateUser(selectedUser.id, userDataToUpdate);
         setUsers(users.map(u => u.id === selectedUser.id ? {
           ...response.user,
-          id: response.user.id || response.user._id || selectedUser.id // Asegura que el ID se mantenga
-        } : u));        
+          id: response.user.id || response.user._id || selectedUser.id,
+        } : u));
         setAlert({ type: 'success', message: 'Usuario actualizado correctamente' });
-        if (modal) modal.hide();
+        const modalEl = document.getElementById("editContact");
+        if (modalEl) {
+          const modal = window.bootstrap.Modal.getInstance(modalEl);
+          modal.hide();
+        }
       } else {
         // Crear nuevo usuario
         const newUserData = {
@@ -203,20 +223,32 @@ const Users = () => {
           email: selectedUser.email,
           password: selectedUser.password,
           isSuperAdmin: selectedUser.isSuperAdmin || false,
-          adminOf: selectedUser.adminOf?.map(org => org.id) || []
+          adminOf: selectedUser.adminOf?.map(org => org.id) || [],
         };
-  
+
         const response = await addUser(newUserData);
         const updatedUsers = await fetchAllUsers();
         setUsers(updatedUsers);
         setAlert({ type: 'success', message: 'Usuario creado correctamente' });
-        if (modal) modal.hide();
+        const modalEl = document.getElementById("editContact");
+        if (modalEl) {
+          const modal = window.bootstrap.Modal.getInstance(modalEl);
+          modal.hide();
+        }
       }
     } catch (err) {
-      setAlert({ 
-        type: 'danger', 
-        message: `Error al ${selectedUser.id ? 'actualizar' : 'crear'} el usuario: ${err.message}` 
-      });
+      // Manejar errores específicos del backend
+      if (err.message.includes('El email ya está en uso')) {
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          email: 'El email ya está en uso por otro usuario. Por favor, utiliza otro email.',
+        }));
+      } else {
+        setAlert({
+          type: 'danger',
+          message: `Error al ${selectedUser.id ? 'actualizar' : 'crear'} el usuario: ${err.message}`,
+        });
+      }
     }
   };
 
@@ -283,13 +315,12 @@ const Users = () => {
                     <SortableHeader label="Email" columnKey="email" />
                     <SortableHeader label="Permisos" columnKey="isSuperAdmin" />
                     <SortableHeader label="Organizaciones" columnKey="adminOf" />
-                    <th>Contraseña</th>
                     <th className="fw-bold">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="text-center align-middle">
                   {sortedUsers.map((user) => (
-                    <tr key={user.id}>
+                    <tr key={user._id}>
                       <td className="fw-bold">{user.username}</td>
                       <td>{user.email}</td>
                       <td>
@@ -315,7 +346,6 @@ const Users = () => {
                           : <span className="text-muted">Ninguna</span>
                         }
                       </td>
-                      <td>{user.password}</td>
                       <td>
                         <div className="d-flex flex-column flex-md-row justify-content-center">
                           <button
@@ -350,7 +380,7 @@ const Users = () => {
       </div>
 
       {/* Modal para editar / agregar usuario */}
-      <div className="modal fade" id="editContact" data-bs-backdrop="static" data-bs-keyboard="false" tabIndex="-1" aria-labelledby="editContactLabel" aria-hidden="true">
+      <div className="modal fade" id="editContact" data-bs-backdrop="static" data-bs-keyboard="false" tabIndex="-1" aria-labelledby="editContactLabel">
         <div className="modal-dialog modal-lg modal-dialog-centered" role="document">
           <div className="modal-content">
             <form onSubmit={handleSubmit} className="needs-validation" noValidate>
@@ -364,95 +394,90 @@ const Users = () => {
                 {selectedUser && (
                   <>
                     <div className="row gx-3">
-                      <div className="col-12 col-sm-6">
-                        <div className="mb-3">
-                          <label htmlFor="username" className="form-label">Username</label>
-                          <input 
-                            type="text" 
-                            className="form-control" 
-                            id="username" 
-                            value={selectedUser.username}
-                            onChange={(e) => setSelectedUser({ ...selectedUser, username: e.target.value })}
-                            placeholder="Username"
-                            required
-                          />
-                          <div className="invalid-feedback">
-                            Por favor, ingresa un username.
-                          </div>
-                        </div>
+                      <div className="col-12 mb-3">
+                        <label htmlFor="username" className="form-label">Username</label>
+                        <input 
+                          type="text" 
+                          className={`form-control ${errors.username ? 'is-invalid' : ''}`}
+                          id="username" 
+                          value={selectedUser.username}
+                          onChange={handleInputChange}
+                          placeholder="Username"
+                          required
+                        />
+                        {errors.username && (
+                          <div className="invalid-feedback">{errors.username}</div>
+                        )}
                       </div>
-                      <div className="col-12 col-sm-6">
-                        <div className="mb-3">
+                        <div className="col-12 mb-3">
                           <label htmlFor="email" className="form-label">Email</label>
-                          <input 
-                            type="email" 
-                            className="form-control" 
-                            id="email" 
-                            value={selectedUser.email}
-                            onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
+                          <input
+                            type="email"
+                            className={`form-control ${errors.email ? 'is-invalid' : ''}`}
+                            id="email"
+                            name="email"
+                            value={selectedUser?.email || ''}
+                            onChange={handleInputChange}
                             placeholder="Email"
                             required
                           />
-                          <div className="invalid-feedback">
-                            Por favor, ingresa un email válido.
+                          {errors.email && (
+                            <div className="invalid-feedback">{errors.email}</div>
+                          )}
+                        </div>
+                      </div>
+                    
+                      <div className="col-12 mb-3">
+                        <label htmlFor="password" className="form-label">
+                          {selectedUser.id ? "Contraseña (dejar vacío para mantener la actual)" : "Contraseña"}
+                        </label>
+                        <input
+                          type="password"
+                          className={`form-control ${errors.password ? 'is-invalid' : ''}`}
+                          id="password"
+                          name="password"
+                          value={selectedUser?.password || ''}
+                          onChange={handleInputChange}
+                          placeholder={selectedUser?.id ? "Nueva contraseña (opcional)" : "Contraseña"}
+                          required={!selectedUser?.id}
+                        />
+                        {errors.password && (
+                          <div className="invalid-feedback">{errors.password}</div>
+                        )}
+                        <div className="form-text">
+                          {selectedUser?.id
+                            ? "Dejar en blanco para mantener la contraseña actual"
+                            : "La contraseña debe tener entre 6 y 20 caracteres, contener al menos una mayúscula, una minúscula y un número"}
+                        </div>
+                      </div>
+                      <div className="row gx-3">
+                        <div className="col-12 col-sm-6">
+                          <div className="mb-3">
+                            <label htmlFor="isSuperAdmin" className="form-label">Super Admin</label>
+                            <select 
+                              id="isSuperAdmin" 
+                              className="form-select"
+                              value={selectedUser.isSuperAdmin ? '1' : '0'}
+                              onChange={(e) => setSelectedUser({ 
+                                ...selectedUser, 
+                                isSuperAdmin: e.target.value === '1' 
+                              })}
+                            >
+                              <option value="1">Sí</option>
+                              <option value="0">No</option>
+                            </select>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                    <div className="row gx-3">
                       <div className="col-12 col-sm-6">
-                        <div className="mb-3">
-                          <label htmlFor="password" className="form-label">
-                            {selectedUser.id ? "Contraseña (dejar vacío para mantener la actual)" : "Contraseña"}
-                          </label>
-                          <input
-                            type="password"
-                            className="form-control"
-                            id="password"
-                            value={selectedUser.password}
-                            onChange={(e) => setSelectedUser({ ...selectedUser, password: e.target.value })}
-                            placeholder={selectedUser.id ? "Nueva contraseña (opcional)" : "Contraseña"}
-                            required={!selectedUser.id}
-                            pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{6,20}$"
-                            title="La contraseña debe tener entre 6 y 20 caracteres, contener al menos una mayúscula, una minúscula y un número"
-                          />
-                          <div className="invalid-feedback">
-                            {selectedUser.id 
-                              ? "Si desea cambiar la contraseña, debe cumplir con el formato requerido"
-                              : "La contraseña debe tener entre 6 y 20 caracteres, contener al menos una mayúscula, una minúscula y un número"
-                            }
-                          </div>
-                        </div>
-                      </div>
-                      <div className="col-12 col-sm-6">
-                        <div className="mb-3">
-                          <label htmlFor="isSuperAdmin" className="form-label">Super Admin</label>
-                          <select 
-                            id="isSuperAdmin" 
-                            className="form-select"
-                            value={selectedUser.isSuperAdmin ? '1' : '0'}
-                            onChange={(e) => setSelectedUser({ 
-                              ...selectedUser, 
-                              isSuperAdmin: e.target.value === '1' 
-                            })}
-                          >
-                            <option value="1">Sí</option>
-                            <option value="0">No</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="row gx-3">
-                      <div className="col-12">
                         <div className="mb-3">
                           <label className="form-label">Organizaciones que administra</label>
                           <div className="border rounded p-3" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                             {organizations?.map(org => (
-                              <div key={org.id} className="form-check mb-2">
+                              <div key={org._id} className="form-check mb-2">
                                 <input
                                   type="checkbox"
                                   className="form-check-input"
-                                  id={`org-${org.id}`}
+                                  id={`org-${org._id}`}
                                   checked={selectedUser.adminOf?.some(selected => selected.id === org._id)}
                                   onChange={(e) => {
                                     const isChecked = e.target.checked;

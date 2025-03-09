@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import LocalHeaderLayout from '../../../components/LocalHeaderLayout';
 import Spinner from '../../../components/Spinner';  
+import ConfirmationModal from '../../../components/ConfirmationModal';
 import {
   fetchEventRawLocations,
   deleteAllEventRawLocations
@@ -18,6 +19,7 @@ const RawLocations = () => {
   const [selectedDevice, setSelectedDevice] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [organizationCode, setOrganizationCode] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const tableRef = useRef(null);
 
   const breadcrumbs = [
@@ -87,14 +89,14 @@ const RawLocations = () => {
 
   const handleDeleteAllLocations = async () => {
     try {
-      if (window.confirm('¿Estás seguro de que deseas eliminar todas las ubicaciones?')) {
-        await deleteAllEventRawLocations(eventCode);
-        setLocations([]);
-        alert('Todas las ubicaciones han sido eliminadas correctamente.');
-      }
+      await deleteAllEventRawLocations(eventCode);
+      setLocations([]);
+      alert('Todas las ubicaciones han sido eliminadas correctamente.');
+      setShowDeleteModal(false);
     } catch (error) {
       console.error('Error al eliminar las ubicaciones:', error);
       alert('Error al eliminar las ubicaciones. Por favor, inténtalo de nuevo.');
+      setShowDeleteModal(false);
     }
   };
 
@@ -135,13 +137,13 @@ const RawLocations = () => {
 
   // Construimos el HTML para el botón de eliminar
   const deleteAllButtonHtml = `
-    <button 
-      class="btn btn-danger delete-all-btn"
-      style="padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;"
-    >
-      Eliminar todas las ubicaciones
-    </button>
-  `;
+  <button 
+    class="btn btn-danger delete-all-btn"
+    style="padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer"
+  >
+    Eliminar todas las ubicaciones
+  </button>
+`;
 
   // Inicializamos DataTables
   useEffect(() => {
@@ -198,7 +200,7 @@ const RawLocations = () => {
             }
           },
           {
-            data: 'deviceID', // Cambiamos a null para manejar nosotros los datos
+            data: 'deviceID',
             render: (data, type, row) => {
               if (!row.deviceID) return 'Sin dispositivo';
               const dev = devices.find((d) => d.deviceID === row.deviceID);
@@ -206,7 +208,7 @@ const RawLocations = () => {
             }
           },
           {
-            data: 'deviceID', // Cambiamos a null para manejar nosotros los datos
+            data: 'deviceID',
             render: (data, type, row) => {
               if (!row.deviceID) {
                 return `<div style="width:20px; height:20px; border-radius:50%; background-color:transparent"></div>`;
@@ -223,15 +225,18 @@ const RawLocations = () => {
         "<'row align-items-center justify-content-between'<'col-auto lengthMenu'l><'col-auto deviceDropdown'>>" +
         // Tabla
         "<'row'<'col-12'tr>>" +
-        // Fila inferior: a la izquierda => botón; a la derecha => info + paginación
-        "<'row align-items-center justify-content-between'<'col-auto deleteAllButton'><'col-auto text-end'i p>>"
-      ,
-      
+        // Fila con la información (Mostrando X a Y de...)
+        "<'row justify-content-end'<'col-auto'i>>" +
+        // Fila inferior: botón a la izquierda, paginación a la derecha
+        "<'row align-items-center justify-content-between'<'col-auto deleteAllButton'><'col-auto'p>>"
+        ,
         
         paging: true,
         ordering: true,
         info: true,
         searching: false, // Desactivamos el buscador
+        scrollX: true, // Habilitamos el scroll horizontal
+        responsive: true,  // Desactivamos el buscador
         language: {
           lengthMenu: "Mostrar _MENU_ ubicaciones",
           info: "Mostrando _START_ a _END_ de _TOTAL_ ubicaciones",
@@ -262,10 +267,11 @@ const RawLocations = () => {
             $('#deviceDropdown').text(newText);
           });
 
-          // Event listener para el botón “Eliminar todas las ubicaciones”
+          // Event listener para el botón "Eliminar todas las ubicaciones"
           $('.deleteAllButton').on('click', '.delete-all-btn', function(e) {
             e.preventDefault();
-            handleDeleteAllLocations();
+            // Ahora mostramos el modal en lugar de usar window.confirm
+            setShowDeleteModal(true);
           });
         }
       });
@@ -280,17 +286,13 @@ const RawLocations = () => {
     <LocalHeaderLayout breadcrumbs={breadcrumbs}>
       {loading && <Spinner />}
 
-      <div className="content-wrapper">
+      <div className="content-wrapper" style={{ paddingBottom: "50px" }}>
         <div className="row gx-3">
           <div className="col-sm-12 col-12">
             <div className="card">
               <div className="card-body">
-                {/* 
-                  Eliminamos aquí el botón y el dropdown, 
-                  pues ahora los inyectamos dentro del DataTable (initComplete)
-                */}
                 {filteredLocations.length > 0 ? (
-                  <div className="table-responsive">
+                  <div className="table-responsive overflow-auto">
                     <table
                       id="hideSearchExample"
                       className="table custom-table"
@@ -324,6 +326,16 @@ const RawLocations = () => {
           </div>
         </div>
       </div>
+
+      {showDeleteModal && (
+        <ConfirmationModal
+          id="delete-locations-modal"
+          title="Eliminar todas las ubicaciones"
+          message="¿Estás seguro de que deseas eliminar todas las ubicaciones de este evento? Esta acción no se puede deshacer."
+          onConfirm={() => handleDeleteAllLocations()}
+          onCancel={() => setShowDeleteModal(false)}
+        />
+      )}
     </LocalHeaderLayout>
   );
 };
