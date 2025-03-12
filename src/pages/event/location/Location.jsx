@@ -10,12 +10,12 @@ import { fetchRouteByEventCodeDeviceID, fetchResetVisitedStatusByEventCode } fro
 // Utils
 import { centerMapBasedOnMarkers } from "../../../utils/mapCentering";
 import { getNearestRouteLocations } from "../../../utils/getNearestRouteLocations";
+import colors from "../../../utils/colors";
 
 // Components
 import { useMap } from "../../../components/SharedMap";
 import DevicePanel from "../../../components/DevicePanel";
 import Spinner from "../../../components/Spinner";
-import TogglePanelButton from "../../../components/TogglePanelButton";
 import ImproveLocationButton from "../../../components/ImproveLocationButton";
 import UpdateMarkersButton from "../../../components/UpdateMarkersButton";
 
@@ -44,8 +44,10 @@ function Location({ eventCode }) {
   // Último timestamp
   const [lastLocationMarkerTime, setLastLocationMarkerTime] = useState("");
 
-  // Estado para mostrar/ocultar el panel lateral
-  const [showPanel, setShowPanel] = useState(false);
+  // Estado para mostrar/ocultar los paneles laterales
+  const [showDevicePanel, setShowDevicePanel] = useState(false);
+  const [showToolsPanel, setShowToolsPanel] = useState(false);
+  
   // Estado para guardar el dispositivo filtrado (cuando se muestra "Ver")
   const [selectedDevice, setSelectedDevice] = useState(null);
 
@@ -435,60 +437,136 @@ function Location({ eventCode }) {
     navigate(`/events/${eventCode}/location/${deviceID}/edit`);
   };
 
+  // Manejador para cambiar entre paneles
+  const togglePanel = (panelName) => {
+    if (panelName === 'devices') {
+      setShowDevicePanel(prev => !prev);
+      if (showToolsPanel) setShowToolsPanel(false);
+    } else if (panelName === 'tools') {
+      setShowToolsPanel(prev => !prev);
+      if (showDevicePanel) setShowDevicePanel(false);
+    }
+  };
+
   return (
     <>
       {/* SPINNER DE CARGA */}
       {loading && <Spinner />}
 
-      {/* BOTÓN PARA MOSTRAR/OCULTAR PANEL */}
+      {/* BOTONES PARA MOSTRAR/OCULTAR PANELES */}
       {!loading && (
-        <TogglePanelButton
-          showPanel={showPanel}
-          togglePanel={() => setShowPanel((prev) => !prev)}
-        />
+        <div className="panel-toggle-buttons" style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '20px',
+          display: 'flex',
+          gap: '10px'
+        }}>
+          {/* Botón para panel de dispositivos */}
+          <button 
+            className={`btn ${showDevicePanel ? 'btn-primary' : 'btn-outline-light'}`}
+            onClick={() => togglePanel('devices')}
+            title="Ver dispositivos"
+            style={{
+              backgroundColor: showDevicePanel ? '' : colors.white,
+              color: showDevicePanel ? '' : colors.purple,
+              borderColor: showDevicePanel ? '' : colors.purple,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              width: '150px', 
+              justifyContent: 'center'  
+            }}
+          >
+            <i className="bi bi-phone"></i> Dispositivos
+          </button>
+          
+          {/* Botón para panel de herramientas */}
+          <button 
+            className={`btn ${showToolsPanel ? 'btn-primary' : 'btn-outline-light'}`}
+            onClick={() => togglePanel('tools')}
+            title="Más funcionalidades"
+            style={{
+              backgroundColor: showToolsPanel ? '' : colors.white,
+              color: showToolsPanel ? '' : colors.purple,
+              borderColor: showToolsPanel ? '' : colors.purple,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              width: '150px', 
+              justifyContent: 'center'  
+            }}
+          >
+            <i className="bi bi-gear"></i> Herramientas
+          </button>
+        </div>
       )}
 
       {/* PANEL DE DISPOSITIVOS */}
-      {showPanel && !loading && (
+      {showDevicePanel && !loading && (
         <DevicePanel
           devices={devices}
           showDevice={showDeviceLocations}
           handleEdit={handleEditLocations}
           showAll={showAllLocations}
           selectedDevice={selectedDevice}
+          onClose={() => setShowDevicePanel(false)}
         />
       )}
       
-      {/* BOTONES DE MEJORA DE UBICACIÓN Y ACTUALIZACIÓN */}
-      {!loading && (
-        <div className="location-controls" style={{ 
-          position: 'absolute', 
-          bottom: '20px', 
-          right: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px'
-        }}>
-          <ImproveLocationButton
-            improveLocation={improveLocation}
-            setImproveLocation={setImproveLocation}
-          />
-          <UpdateMarkersButton fetchData={handleUpdateMarkers} />
-        </div>
-      )}
-      
-      {/* INFO DE ÚLTIMA UBICACIÓN */}
-      {lastLocationMarkerTime && !loading && (
-        <div className="timestamp-info" style={{
+      {/* PANEL DE HERRAMIENTAS */}
+      {showToolsPanel && !loading && (
+        <div className="tools-panel-container" style={{
           position: 'absolute',
-          bottom: '20px',
-          left: '20px',
-          background: 'rgba(255, 255, 255, 0.8)',
-          padding: '8px',
-          borderRadius: '4px',
-          fontSize: '12px'
+          bottom: '70px',      
+          left: '20px',        
+          backgroundColor: 'white',
+          boxShadow: '0 0 10px rgba(0,0,0,0.2)',
+          borderRadius: '8px',
+          padding: '15px',
+          width: '310px',
+          zIndex: 1000
         }}>
-          Última actualización: {new Date(lastLocationMarkerTime).toLocaleString()}
+          <div className="panel-header" style={{
+            borderBottom: '1px solid colors.borderLight',
+            paddingBottom: '10px',
+            marginBottom: '15px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <h5 className="m-0">Herramientas</h5>
+            <button 
+              className="btn-close" 
+              onClick={() => setShowToolsPanel(false)}
+              aria-label="Cerrar"
+            ></button>
+          </div>
+          
+          <div className="tools-content" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '15px'
+          }}>
+            {/* Botón de mejora de ubicaciones */}
+            <ImproveLocationButton
+              improveLocation={improveLocation}
+              setImproveLocation={setImproveLocation}
+            />
+            
+            {/* Botón de actualización de marcadores */}
+            <UpdateMarkersButton fetchData={handleUpdateMarkers} />
+            
+            {/* Información de última actualización */}
+            {lastLocationMarkerTime && (
+              <div className="timestamp-info" style={{
+                background: colors.lightGray,
+                padding: '10px',
+                borderRadius: '4px',
+                fontSize: '14px'
+              }}>
+                <i className="bi bi-clock me-2"></i>
+                <strong>Última actualización:</strong><br />
+                {new Date(lastLocationMarkerTime).toLocaleString()}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </>

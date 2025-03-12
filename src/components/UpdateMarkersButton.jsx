@@ -1,13 +1,15 @@
 import React from "react";
+import colors from "../utils/colors";
 
 function UpdateMarkersButton({ fetchData }) {
+  
   return (
     <button
       onClick={fetchData}
       className="update-button"
       style={{
-        backgroundColor: "#007BFF",
-        color: "#ffffff",
+        backgroundColor: colors.purple,
+        color: colors.white,
         border: "none",
         padding: "8px 12px",
         borderRadius: "4px",
@@ -20,7 +22,14 @@ function UpdateMarkersButton({ fetchData }) {
         fontSize: "14px",
       }}
     >
-      🔄 Actualizar marcadores
+      <i 
+        className="bi bi-arrow-clockwise" 
+        style={{ 
+          marginRight: "8px",
+          fontSize: "16px"
+        }}
+      ></i>
+      Actualizar marcadores
     </button>
   );
 }
