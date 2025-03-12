@@ -11,6 +11,7 @@ import Spinner from '../../../components/Spinner';
 
 // Services
 import {
+  fetchRouteMarkersByEventCode,
   fetchRouteByEventCodeDeviceID,
   fetchDeleteRouteMarker,
   fetchCreateRouteMarker,
@@ -26,10 +27,8 @@ import { centerMapBasedOnMarkers } from '../../../utils/mapCentering';
 const EditRoute = ({ eventCode, deviceID }) => {
   const map = useMap();
 
-  // Refs para los markers y polyline (definitivos)
   const markersRef = useRef([]);
   const polylineRef = useRef(null);
-  // Refs para los markers y polyline temporales (modo insert)
   const tempPolylineRef = useRef(null);
   const tempMarkersRef = useRef([]);
 
@@ -43,6 +42,8 @@ const EditRoute = ({ eventCode, deviceID }) => {
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState(null);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+
+  const [isMultiDevice, setIsMultiDevice] = useState(true);
 
   // Autoocultar la alerta después de 3 segundos
   useEffect(() => {
@@ -69,13 +70,21 @@ const EditRoute = ({ eventCode, deviceID }) => {
   const loadDeviceColor = useCallback(async () => {
     try {
       const eventData = await fetchEventByCode(eventCode);
+      setIsMultiDevice(!!eventData.multiDevice);
       let postalCode = null;
       if (eventData) {
         postalCode = eventData.postalCode;
         setEventPostalCode(postalCode);
       }
+
+      // Si no es multiDevice, establecemos un color predeterminado
+      if (!eventData.multiDevice) {
+        console.log("Evento sin multiDevice, usando color predeterminado");
+        setDeviceColor('#FF0000');
+        return;
+      }
+
       const device = await fetchDeviceByDeviceIDEventCode(deviceID, eventCode);
-      // Nota: Asegúrate de usar comillas invertidas en el template literal
       const color = device?.color ? `#${device.color.replace('#', '')}` : '#FF0000';
       setDeviceColor(color);
     } catch (err) {
@@ -96,8 +105,15 @@ const EditRoute = ({ eventCode, deviceID }) => {
       polylineRef.current = null;
     }
 
-    // Fetch de los markers de ruta
-    const markersData = await fetchRouteByEventCodeDeviceID(eventCode, deviceID);
+    let markersData = null;
+    if (!isMultiDevice) {
+      markersData = await fetchRouteMarkersByEventCode(eventCode);
+    } else {
+      markersData = await fetchRouteByEventCodeDeviceID(eventCode, deviceID);
+    }
+
+    console.log("MarkersData:", markersData);
+
     if (!markersData || markersData.length === 0) {
       if (shouldCenter) {
         centerMapBasedOnMarkers(map, false, eventPostalCode);
@@ -195,7 +211,7 @@ const EditRoute = ({ eventCode, deviceID }) => {
     }
 
     setLoading(false);
-  }, [map, eventCode, deviceID, mode, deviceColor, eventPostalCode]);
+  }, [map, eventCode, deviceID, mode, deviceColor, eventPostalCode, isMultiDevice]);
 
   useEffect(() => {
     (async () => {
@@ -255,16 +271,18 @@ const EditRoute = ({ eventCode, deviceID }) => {
     }
     try {
       setLoading(true);
+      // Usamos el deviceID efectivo (null si no es multiDevice)
+      const effectiveDeviceID = isMultiDevice ? deviceID : null;
+      
       for (const point of newPoints) {
         const timestamp = DateTime.now().setZone("Europe/Madrid").toISO();
         const adjustedTimestamp = new Date(timestamp);
-        const locationData = { 
-          latitude: point.latitude, 
-          longitude: point.longitude, 
-          accuracy: 0,
-          timestamp: adjustedTimestamp,
-        };
-        await fetchCreateRouteMarker(eventCode, deviceID, point.latitude, point.longitude);
+        await fetchCreateRouteMarker(
+          eventCode, 
+          effectiveDeviceID, 
+          point.latitude, 
+          point.longitude
+        );
       }
       clearTemporaryMarkersAndLines();
       setAlert({ type: 'success', message: 'Puntos insertados correctamente.' });
@@ -300,13 +318,14 @@ const EditRoute = ({ eventCode, deviceID }) => {
 
   const handleDeleteAllRoutes = async () => {
     try {
-      if (window.confirm('¿Estás seguro de que deseas eliminar todas las rutas?')) {
-        setLoading(true);
-        await fetchDeleteAllRoutes(eventCode, deviceID);
-        clearTemporaryMarkersAndLines();
-        await loadRouteMarkers(true);
-        setAlert({ type: 'success', message: 'Todas las rutas han sido eliminadas correctamente.' });
-      }
+      setLoading(true);
+      // Usamos el deviceID efectivo (null si no es multiDevice)
+      const effectiveDeviceID = isMultiDevice ? deviceID : null;
+      await fetchDeleteAllRoutes(eventCode, effectiveDeviceID);
+      
+      clearTemporaryMarkersAndLines();
+      await loadRouteMarkers(true);
+      setAlert({ type: 'success', message: 'Todas las rutas han sido eliminadas correctamente.' });
     } catch (error) {
       console.error('Error al eliminar rutas:', error);
       setAlert({ type: 'warning', message: 'No hay rutas para eliminar' });
@@ -314,8 +333,6 @@ const EditRoute = ({ eventCode, deviceID }) => {
       setLoading(false);
     }
   };
-
-
 
   return (
     <>

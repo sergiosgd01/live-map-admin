@@ -20,6 +20,7 @@ const RawLocations = () => {
   const [loading, setLoading] = useState(true);
   const [organizationCode, setOrganizationCode] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isMultiDevice, setIsMultiDevice] = useState(false);
   const tableRef = useRef(null);
 
   const breadcrumbs = [
@@ -42,9 +43,14 @@ const RawLocations = () => {
         const eventData = await fetchEventByCode(eventCode);
         if (eventData && eventData.organizationCode) {
           setOrganizationCode(eventData.organizationCode);
+          // Corregido: usamos multiDevice en lugar de isMultiDevice
+          setIsMultiDevice(!!eventData.multiDevice);
         }
 
-        await loadDevices();
+        // Solo cargamos los dispositivos si es multiDevice
+        if (eventData && eventData.multiDevice) {
+          await loadDevices();
+        }
         await loadLocations();
       } catch (error) {
         console.error("Error in fetchData:", error);
@@ -82,10 +88,10 @@ const RawLocations = () => {
     }
   };
 
-  // Filtramos las ubicaciones según el dispositivo elegido
-  const filteredLocations = selectedDevice === 'ALL'
-    ? locations
-    : locations.filter((loc) => loc.deviceID === selectedDevice);
+  // Filtramos las ubicaciones según el dispositivo elegido (solo si es multiDevice)
+  const filteredLocations = isMultiDevice && selectedDevice !== 'ALL'
+    ? locations.filter((loc) => loc.deviceID === selectedDevice)
+    : locations;
 
   const handleDeleteAllLocations = async () => {
     try {
@@ -100,8 +106,8 @@ const RawLocations = () => {
     }
   };
 
-  // Construimos el HTML para el dropdown de dispositivos
-  const deviceDropdownHtml = `
+  // Construimos el HTML para el dropdown de dispositivos (solo si es multiDevice)
+  const deviceDropdownHtml = isMultiDevice ? `
     <div class="dropdown" style="margin-left: 10px;">
       <button 
         class="btn btn-primary dropdown-toggle" 
@@ -133,7 +139,7 @@ const RawLocations = () => {
         }
       </ul>
     </div>
-  `;
+  ` : '';
 
   // Construimos el HTML para el botón de eliminar
   const deleteAllButtonHtml = `
@@ -156,87 +162,95 @@ const RawLocations = () => {
     }
 
     if (filteredLocations.length > 0) {
-      dataTable = $('#hideSearchExample').DataTable({
-        data: filteredLocations,
-        columns: [
-          {
-            data: 'timestamp',
-            render: function(value) {
-              if (!value) return 'N/A';
-              const date = new Date(value);
-              const formattedDate = date.toISOString().split('T')[0];
-              const formattedTime = date.toISOString().split('T')[1].split('Z')[0];
-              return (
-                formattedDate +
-                ' <span style="font-weight:bold;">' +
-                formattedTime +
-                '</span>'
-              );
+      // Definimos las columnas según si es multiDevice o no
+      let columns = [
+        {
+          data: 'timestamp',
+          render: function(value) {
+            if (!value) return 'N/A';
+            const date = new Date(value);
+            const formattedDate = date.toISOString().split('T')[0];
+            const formattedTime = date.toISOString().split('T')[1].split('Z')[0];
+            return (
+              formattedDate +
+              ' <span style="font-weight:bold;">' +
+              formattedTime +
+              '</span>'
+            );
+          }
+        },
+        { data: 'latitude' },
+        { data: 'longitude' },
+        {
+          data: 'accuracy',
+          render: (val) => val || 'N/A'
+        },
+        {
+          data: 'errorCode',
+          render: (data) => {
+            const errorCode = parseInt(data, 10);
+            if (isNaN(errorCode)) {
+              return `<span class="badge shade-red">N/A</span>`;
             }
-          },
-          { data: 'latitude' },
-          { data: 'longitude' },
-          {
-            data: 'accuracy',
-            render: (val) => val || 'N/A'
-          },
-          {
-            data: 'errorCode',
-            render: (data) => {
-              const errorCode = parseInt(data, 10);
-              if (isNaN(errorCode)) {
-                return `<span class="badge shade-red">N/A</span>`;
-              }
-              switch (errorCode) {
-                case 0:
-                  return `<span class="badge shade-green">${errorCode}</span>`;
-                case 1:
-                  return `<span class="badge shade-yellow">${errorCode}</span>`;
-                case 2:
-                  return `<span class="badge shade-red">${errorCode}</span>`;
-                default:
-                  return `<span class="badge shade-orange">${errorCode}</span>`;
-              }
-            }
-          },
-          {
-            data: 'deviceID',
-            render: (data, type, row) => {
-              if (!row.deviceID) return 'Sin dispositivo';
-              const dev = devices.find((d) => d.deviceID === row.deviceID);
-              return dev ? dev.name : row.deviceID;
-            }
-          },
-          {
-            data: 'deviceID',
-            render: (data, type, row) => {
-              if (!row.deviceID) {
-                return `<div style="width:20px; height:20px; border-radius:50%; background-color:transparent"></div>`;
-              }
-              const dev = devices.find((d) => d.deviceID === row.deviceID);
-              const color = dev ? dev.color : 'transparent';
-              return `<div style="width:20px; height:20px; border-radius:50%; background-color:${color}"></div>`;
+            switch (errorCode) {
+              case 0:
+                return `<span class="badge shade-green">${errorCode}</span>`;
+              case 1:
+                return `<span class="badge shade-yellow">${errorCode}</span>`;
+              case 2:
+                return `<span class="badge shade-red">${errorCode}</span>`;
+              default:
+                return `<span class="badge shade-orange">${errorCode}</span>`;
             }
           }
-        ],
-        // Personalizamos el dom para situar los controles
-        dom:
-        // Fila superior: a la izquierda => lengthMenu (l); a la derecha => deviceDropdown
-        "<'row align-items-center justify-content-between'<'col-auto lengthMenu'l><'col-auto deviceDropdown'>>" +
-        // Tabla
-        "<'row'<'col-12'tr>>" +
-        // Fila con la información (Mostrando X a Y de...)
-        "<'row justify-content-end'<'col-auto'i>>" +
-        // Fila inferior: botón a la izquierda, paginación a la derecha
-        "<'row align-items-center justify-content-between'<'col-auto deleteAllButton'><'col-auto'p>>"
-        ,
-        
+        }
+      ];
+
+      // Añadimos columnas de dispositivo solo si es multiDevice
+      if (isMultiDevice) {
+        columns.push({
+          data: 'deviceID',
+          render: (data, type, row) => {
+            if (!row.deviceID) return 'Sin dispositivo';
+            const dev = devices.find((d) => d.deviceID === row.deviceID);
+            return dev ? dev.name : row.deviceID;
+          }
+        });
+
+        columns.push({
+          data: 'deviceID',
+          render: (data, type, row) => {
+            if (!row.deviceID) {
+              return `<div style="width:20px; height:20px; border-radius:50%; background-color:transparent"></div>`;
+            }
+            const dev = devices.find((d) => d.deviceID === row.deviceID);
+            const color = dev ? dev.color : 'transparent';
+            return `<div style="width:20px; height:20px; border-radius:50%; background-color:${color}"></div>`;
+          }
+        });
+      }
+
+      // Configuramos el DOM según si es multiDevice o no
+      let domConfig = isMultiDevice
+        ? "<'row align-items-center justify-content-between'<'col-auto lengthMenu'l><'col-auto deviceDropdown'>>" +
+          "<'row'<'col-12'tr>>" +
+          "<'row justify-content-end'<'col-auto'i>>" +
+          "<'row align-items-center justify-content-between'<'col-auto deleteAllButton'><'col-auto'p>>"
+        : "<'row align-items-center justify-content-between'<'col-auto lengthMenu'l><'col-auto'>>" +
+          "<'row'<'col-12'tr>>" +
+          "<'row justify-content-end'<'col-auto'i>>" +
+          "<'row align-items-center justify-content-between'<'col-auto deleteAllButton'><'col-auto'p>>";
+
+      dataTable = $('#hideSearchExample').DataTable({
+        data: filteredLocations,
+        columns: columns,
+        dom: domConfig,
         paging: true,
         ordering: true,
         info: true,
-        searching: false, // Desactivamos el buscador
-        scrollX: true, // Habilitamos el scroll horizontal
-        responsive: true,  // Desactivamos el buscador
+        searching: false,
+        scrollX: true,
+        responsive: true,
         language: {
           lengthMenu: "Mostrar _MENU_ ubicaciones",
           info: "Mostrando _START_ a _END_ de _TOTAL_ ubicaciones",
@@ -251,26 +265,28 @@ const RawLocations = () => {
           },
         },
         initComplete: function() {
-          // Inyectamos el dropdown y el botón
-          $('.deviceDropdown').html(deviceDropdownHtml);
-          $('.deleteAllButton').html(deleteAllButtonHtml);
+          // Inyectamos el dropdown solo si es multiDevice
+          if (isMultiDevice) {
+            $('.deviceDropdown').html(deviceDropdownHtml);
+            
+            // Event listener para cambiar dispositivo
+            $('.deviceDropdown').on('click', '.device-option', function(e) {
+              e.preventDefault();
+              const devId = $(this).data('device');
+              setSelectedDevice(devId);
+              const newText = (devId === 'ALL')
+                ? 'Todos los dispositivos'
+                : devices.find((d) => d.deviceID === devId)?.name || 'Desconocido';
+              $('#deviceDropdown').text(newText);
+            });
+          }
 
-          // Event listener para cambiar dispositivo al hacer clic en una opción del dropdown
-          $('.deviceDropdown').on('click', '.device-option', function(e) {
-            e.preventDefault();
-            const devId = $(this).data('device');
-            setSelectedDevice(devId);
-            // Cambiamos el texto del botón
-            const newText = (devId === 'ALL')
-              ? 'Todos los dispositivos'
-              : devices.find((d) => d.deviceID === devId)?.name || 'Desconocido';
-            $('#deviceDropdown').text(newText);
-          });
+          // Inyectamos el botón de eliminar (siempre)
+          $('.deleteAllButton').html(deleteAllButtonHtml);
 
           // Event listener para el botón "Eliminar todas las ubicaciones"
           $('.deleteAllButton').on('click', '.delete-all-btn', function(e) {
             e.preventDefault();
-            // Ahora mostramos el modal en lugar de usar window.confirm
             setShowDeleteModal(true);
           });
         }
@@ -280,7 +296,7 @@ const RawLocations = () => {
     return () => {
       if (dataTable) dataTable.destroy();
     };
-  }, [filteredLocations, devices]);
+  }, [filteredLocations, devices, isMultiDevice]);
 
   return (
     <LocalHeaderLayout breadcrumbs={breadcrumbs}>
@@ -305,8 +321,8 @@ const RawLocations = () => {
                           <th>Longitude</th>
                           <th>Accuracy</th>
                           <th>Error</th>
-                          <th>Device</th>
-                          <th>Device Color</th>
+                          {isMultiDevice && <th>Device</th>}
+                          {isMultiDevice && <th>Color</th>}
                         </tr>
                       </thead>
                     </table>

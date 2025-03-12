@@ -52,7 +52,6 @@ export const registerUser = async (userData) => {
   }
 };
 
-// Obtener datos del usuario autenticado
 export const getCurrentUser = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -68,10 +67,16 @@ export const getCurrentUser = async () => {
       },
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Error al obtener los datos del usuario');
+    // Check for 401, 403 or other error status
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Token inválido o expirado');
     }
+    
+    if (!response.ok) {
+      throw new Error('Error al obtener los datos del usuario');
+    }
+
+    const data = await response.json();
     return data;
   } catch (error) {
     console.error('Error al obtener los datos del usuario:', error);

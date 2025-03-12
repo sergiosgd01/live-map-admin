@@ -8,20 +8,24 @@ import ConfirmationModal from '../../../components/ConfirmationModal';
 import PointInfo from '../../../components/PointInfo';
 import EditPanel from '../../../components/EditPanel';
 import Spinner from '../../../components/Spinner';
+import ImproveLocationButton from '../../../components/ImproveLocationButton';
 
 // Services
 import {
   fetchLocationsByDeviceIdEventCode,
   fetchAddLocation,
   fetchDeleteLocation,
-  fetchDeleteLocationsByDeviceAndEvent
+  fetchDeleteAllLocations, 
+  fetchEventLocations
 } from '../../../services/locationService';
 import { fetchDeviceByDeviceIDEventCode } from '../../../services/deviceService';
 import { fetchEventByCode } from '../../../services/eventService';
+import { fetchRouteByEventCodeDeviceID, fetchResetVisitedStatusByEventCode } from '../../../services/routeService';
 
 // Utils
 import { lightenColor, darkenColor } from '../../../utils/colorUtils';
 import { centerMapBasedOnMarkers } from '../../../utils/mapCentering';
+import { getNearestRouteLocations } from '../../../utils/getNearestRouteLocations';
 
 const EditLocation = ({ eventCode, deviceID }) => {
   const map = useMap();
@@ -30,6 +34,7 @@ const EditLocation = ({ eventCode, deviceID }) => {
   const polylineRef = useRef(null);
   const tempPolylineRef = useRef(null);
   const tempMarkersRef = useRef([]);
+  const improveLocationRef = useRef(false);
 
   const [newPoints, setNewPoints] = useState([]);
   const [selectedMarkers, setSelectedMarkers] = useState([]);
@@ -40,15 +45,25 @@ const EditLocation = ({ eventCode, deviceID }) => {
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState(null);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [improveLocation, setImproveLocation] = useState(false);
+  const [deviceRoute, setDeviceRoute] = useState([]);
+  const [visitedLocations, setVisitedLocations] = useState([]);
+  const [originalLocations, setOriginalLocations] = useState([]);
+
+  const [isMultiDevice, setIsMultiDevice] = useState(true); 
 
   // Autoocultar la alerta después de 5 segundos
   useEffect(() => {
-    console.log("Alert actualizado:", alert);
     if (alert) {
       const timer = setTimeout(() => setAlert(null), 3000);
       return () => clearTimeout(timer);
     }
   }, [alert]);
+
+  // Actualizar la ref de improveLocation cuando cambie el estado
+  useEffect(() => {
+    improveLocationRef.current = improveLocation;
+  }, [improveLocation]);
 
   const clearTemporaryMarkersAndLines = () => {
     console.log("Limpiando marcadores y líneas temporales");
@@ -64,22 +79,48 @@ const EditLocation = ({ eventCode, deviceID }) => {
 
   const loadDeviceColor = useCallback(async () => {
     try {
-      console.log("Cargando color del dispositivo...");
       const eventData = await fetchEventByCode(eventCode);
+      setIsMultiDevice(!!eventData.multiDevice);
       let postalCode = null;
       if (eventData) {
         postalCode = eventData.postalCode;
         setEventPostalCode(postalCode);
       }
+
+      // Si no es multiDevice, establecemos un color predeterminado
+      if (!eventData.multiDevice) {
+        console.log("Evento sin multiDevice, usando color predeterminado");
+        setDeviceColor('#0000FF');
+        return;
+      }
+
       const device = await fetchDeviceByDeviceIDEventCode(deviceID, eventCode);
-      const color = device?.color ? `#${device.color.replace('#', '')}` : '#FF0000';
+      const color = device?.color ? `#${device.color.replace('#', '')}` : '#0000FF';
       setDeviceColor(color);
       console.log("Color del dispositivo cargado:", color);
     } catch (err) {
       console.error('Error al cargar color del dispositivo:', err);
-      setDeviceColor('#FF0000'); 
+      setDeviceColor('#0000FF'); 
     }
   }, [deviceID, eventCode]);  
+
+  const loadDeviceRoute = useCallback(async () => {
+    try {
+      if (!isMultiDevice) {
+        const route = await fetchRouteMarkersByEventCode(eventCode);
+        setDeviceRoute(route);
+        console.log("Ruta cargada (sin multiDevice):", route);
+        return;
+      }
+
+      const route = await fetchRouteByEventCodeDeviceID(eventCode, deviceID);
+      setDeviceRoute(route);
+      console.log("Ruta del dispositivo cargada:", route);
+    } catch (err) {
+      console.error('Error al cargar ruta del dispositivo:', err);
+      setDeviceRoute([]);
+    }
+  }, [deviceID, eventCode, isMultiDevice]);
 
   const loadLocationMarkers = useCallback(async (shouldCenter = false) => {
     if (!map || !eventCode || !deviceColor) return;
@@ -92,7 +133,16 @@ const EditLocation = ({ eventCode, deviceID }) => {
       polylineRef.current = null;
     }
 
-    const markers = await fetchLocationsByDeviceIdEventCode(deviceID, eventCode);
+    let markers;
+    if (isMultiDevice) {
+      markers = await fetchLocationsByDeviceIdEventCode(deviceID, eventCode);
+    } else {
+      // Para eventos sin multiDevice, usamos la API general de ubicaciones
+      markers = await fetchEventLocations(eventCode);
+    }
+    
+    setOriginalLocations(markers);
+    
     if (!markers || markers.length === 0) {
       if (shouldCenter) {
         centerMapBasedOnMarkers(map, false, eventPostalCode);
@@ -101,18 +151,23 @@ const EditLocation = ({ eventCode, deviceID }) => {
       return;
     }
 
-    const path = markers.map((marker, index) => {
+    // Determinar qué ubicaciones usar basado en improveLocation
+    const locationsToUse = improveLocationRef.current && visitedLocations.length > 0 
+      ? visitedLocations 
+      : markers;
+
+    const path = locationsToUse.map((marker, index) => {
       const position = { lat: marker.latitude, lng: marker.longitude };
       let fillColor = deviceColor;
       if (index === 0) {
         fillColor = lightenColor(deviceColor, 50);
-      } else if (index === markers.length - 1) {
+      } else if (index === locationsToUse.length - 1) {
         fillColor = darkenColor(deviceColor, 30);
       }
       const newMarker = new window.google.maps.Marker({
         position,
         map,
-        title: index === 0 ? 'Inicio' : index === markers.length - 1 ? 'Fin' : `Punto ${index + 1}`,
+        title: index === 0 ? 'Inicio' : index === locationsToUse.length - 1 ? 'Fin' : `Punto ${index + 1}`,
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
           scale: 8,
@@ -123,32 +178,32 @@ const EditLocation = ({ eventCode, deviceID }) => {
         },
       });
 
-      if (mode === 'delete') {
-        newMarker.addListener('click', () => {
-          console.log("Marcador clicado en modo eliminar:", marker._id);
-          setSelectedMarkers((prev) => {
-            const isSelected = prev.includes(marker._id);
-            if (isSelected) {
-              newMarker.setIcon({ ...newMarker.getIcon(), fillColor: fillColor });
-              return prev.filter((id) => id !== marker._id);
-            } else {
-              newMarker.setIcon({ ...newMarker.getIcon(), fillColor: lightenColor(deviceColor, 50) });
-              return [...prev, marker._id];
-            }
+      if (!improveLocation) {
+        if (mode === 'delete') {
+          newMarker.addListener('click', () => {
+            setSelectedMarkers((prev) => {
+              const isSelected = prev.includes(marker._id);
+              if (isSelected) {
+                newMarker.setIcon({ ...newMarker.getIcon(), fillColor: fillColor });
+                return prev.filter((id) => id !== marker._id);
+              } else {
+                newMarker.setIcon({ ...newMarker.getIcon(), fillColor: lightenColor(deviceColor, 50) });
+                return [...prev, marker._id];
+              }
+            });
           });
-        });
-      } else if (mode === '') {
-        newMarker.addListener('click', () => {
-          console.log("Marcador clicado en modo ver:", marker._id);
-          setSelectedPoint({
-            id: marker._id,
-            latitude: marker.latitude,
-            longitude: marker.longitude,
-            accuracy: marker.accuracy,
-            timestamp: marker.timestamp,
-            code: marker.code,
+        } else if (mode === '') {
+          newMarker.addListener('click', () => {
+            setSelectedPoint({
+              id: marker._id,
+              latitude: marker.latitude,
+              longitude: marker.longitude,
+              accuracy: marker.accuracy,
+              timestamp: marker.timestamp,
+              code: marker.code,
+            });
           });
-        });
+        }
       }
       markersRef.current.push(newMarker);
       return position;
@@ -159,9 +214,9 @@ const EditLocation = ({ eventCode, deviceID }) => {
       path.forEach((pos) => bounds.extend(pos));
       map.fitBounds(bounds);
     }
-    redrawPolyline(markers);
+    redrawPolyline(locationsToUse);
     setLoading(false);
-  }, [map, eventCode, deviceID, mode, deviceColor, eventPostalCode]);
+  }, [map, eventCode, deviceID, mode, deviceColor, eventPostalCode, visitedLocations, isMultiDevice]);
 
   const redrawPolyline = (markers) => {
     if (polylineRef.current) {
@@ -181,12 +236,58 @@ const EditLocation = ({ eventCode, deviceID }) => {
     polylineRef.current.setMap(map);
   };
 
+  // Efecto para el cambio de improveLocation
+  useEffect(() => {
+    const updateImprovedLocations = async () => {
+      if (improveLocation) {
+        try {
+          console.log("🛠 Activando mejora de ubicación...");
+          
+        // Verificar si hay ubicaciones
+        if (originalLocations.length === 0) {
+          console.log("No hay ubicaciones para mejorar");
+          setAlert({ 
+            type: 'warning', 
+            message: 'No hay ubicaciones para mejorar. Añade ubicaciones primero.' 
+          });
+          setImproveLocation(false); // Desactivar el modo de mejora
+          return;
+        }
+        
+        // Verificar si hay ruta
+        if (deviceRoute.length === 0) {
+          console.log("No hay ruta definida para mejorar ubicaciones");
+          setAlert({ 
+            type: 'warning', 
+            message: 'No hay ruta definida para mejorar las ubicaciones. Crea una ruta primero.' 
+          });
+          setImproveLocation(false); // Desactivar el modo de mejora
+          return;
+        }
+          const visited = await getNearestRouteLocations(originalLocations, deviceRoute);
+          setVisitedLocations(visited);
+          loadLocationMarkers(true);
+        } catch (error) {
+          console.error("Error al mejorar ubicaciones:", error);
+        }
+      } else {
+        console.log("🔄 Restaurando ubicaciones originales");
+        loadLocationMarkers(true);
+      }
+    };
+
+    if (map && deviceColor) {
+      updateImprovedLocations();
+    }
+  }, [improveLocation, deviceRoute, map, deviceColor]);
+
   useEffect(() => {
     (async () => {
       setLoading(true); 
       await loadDeviceColor();
+      await loadDeviceRoute();
     })();
-  }, [loadDeviceColor]);
+  }, [loadDeviceColor, loadDeviceRoute]);
   
   useEffect(() => {
     if (deviceColor) {
@@ -196,7 +297,7 @@ const EditLocation = ({ eventCode, deviceID }) => {
   }, [deviceColor, loadLocationMarkers]); 
 
   useEffect(() => {
-    if (map && mode === 'insert') {
+    if (map && mode === 'insert' && !improveLocation) {
       const handleMapClick = (e) => {
         const { latLng } = e;
         const newPoint = { latitude: latLng.lat(), longitude: latLng.lng() };
@@ -247,10 +348,31 @@ const EditLocation = ({ eventCode, deviceID }) => {
           accuracy: 0,
           timestamp: adjustedTimestamp,
         };
-        await fetchAddLocation(locationData, eventCode, deviceID);        
+        if (isMultiDevice) {
+          await fetchAddLocation(locationData, eventCode, deviceID);
+        } else {
+          await fetchAddLocation(locationData, eventCode, null);
+        }      
       }
+      
       clearTemporaryMarkersAndLines();
       setAlert({ type: 'success', message: 'Puntos insertados correctamente' });
+      
+      // Actualizar ubicaciones originales
+      let updatedLocations;
+      if (isMultiDevice) {
+        updatedLocations = await fetchLocationsByDeviceIdEventCode(deviceID, eventCode);
+      } else {
+        updatedLocations = await fetchEventLocations(eventCode);
+      }
+      setOriginalLocations(updatedLocations);
+      
+      // Si estamos en modo mejorar ubicación, actualizar también las mejoradas
+      if (improveLocationRef.current) {
+        const visited = await getNearestRouteLocations(updatedLocations, deviceRoute);
+        setVisitedLocations(visited);
+      }
+      
       await loadLocationMarkers(true);
     } catch (error) {
       console.error('Error al insertar puntos:', error);
@@ -259,6 +381,27 @@ const EditLocation = ({ eventCode, deviceID }) => {
       setLoading(false);
     }
   };
+
+  // Función para resetear el estado de visited
+const handleResetVisitedStatus = async () => {
+  try {
+    setLoading(true);
+    await fetchResetVisitedStatusByEventCode(eventCode);
+    setAlert({ type: 'success', message: 'Estado de visited reseteado correctamente.' });
+
+    if (improveLocationRef.current) {
+      const visited = await getNearestRouteLocations(originalLocations, deviceRoute);
+      setVisitedLocations(visited);
+    }
+
+    await loadLocationMarkers(true);
+  } catch (error) {
+    console.error('Error al resetear el estado de visited:', error);
+    setAlert({ type: 'danger', message: 'Error al resetear el estado de visited.' });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDeleteSelectedPoints = async () => {
     if (selectedMarkers.length === 0) {
@@ -272,6 +415,22 @@ const EditLocation = ({ eventCode, deviceID }) => {
       }
       setSelectedMarkers([]);
       setAlert({ type: 'success', message: 'Puntos eliminados correctamente' });
+      
+      // Actualizar ubicaciones originales
+      let updatedLocations;
+      if (isMultiDevice) {
+        updatedLocations = await fetchLocationsByDeviceIdEventCode(deviceID, eventCode);
+      } else {
+        updatedLocations = await fetchEventLocations(eventCode);
+      }
+      setOriginalLocations(updatedLocations);
+      
+      // Si estamos en modo mejorar ubicación, actualizar también las mejoradas
+      if (improveLocationRef.current) {
+        const visited = await getNearestRouteLocations(updatedLocations, deviceRoute);
+        setVisitedLocations(visited);
+      }
+      
       await loadLocationMarkers(true);
     } catch (error) {
       console.error('Error al eliminar puntos:', error);
@@ -284,8 +443,19 @@ const EditLocation = ({ eventCode, deviceID }) => {
   const handleDeleteAllLocations = async () => {
     try {
       setLoading(true);
-      await fetchDeleteLocationsByDeviceAndEvent(eventCode, deviceID);
+
+      if (isMultiDevice) {
+        await fetchDeleteAllLocations(eventCode, deviceID);
+      } else {
+        await fetchDeleteAllLocations(eventCode);
+      }
+
       setAlert({ type: 'success', message: 'Todas las ubicaciones se han eliminado correctamente.' });
+      
+      // Resetear ubicaciones
+      setOriginalLocations([]);
+      setVisitedLocations([]);
+      
       await loadLocationMarkers(true);
     } catch (error) {
       console.error('Error al eliminar todas las ubicaciones:', error);
@@ -299,7 +469,8 @@ const EditLocation = ({ eventCode, deviceID }) => {
     <>
       {/* SPINNER DE CARGA */}
       {loading && <Spinner />}
-
+  
+      {/* ALERTAS */}
       {alert && (
         <Alert 
           type={alert.type} 
@@ -307,23 +478,60 @@ const EditLocation = ({ eventCode, deviceID }) => {
           onClose={() => setAlert(null)} 
         />
       )}
-
-      <EditPanel
-        title="Editar Ubicaciones"
-        mode={mode}
-        setMode={setMode}
-        handleInsertPoints={handleInsertPoints}
-        handleDeleteSelectedPoints={handleDeleteSelectedPoints}
-        setShowDeleteAllModal={setShowDeleteAllModal}
-      />
-
-      <PointInfo 
-        selectedPoint={selectedPoint} 
-        mode={mode} 
-        setSelectedPoint={setSelectedPoint} 
-        extended={true}
-      />
-
+  
+      {/* PANEL DE EDICIÓN */}
+      {!improveLocation && (
+        <EditPanel
+          title="Editar Ubicaciones"
+          mode={mode}
+          setMode={setMode}
+          handleInsertPoints={handleInsertPoints}
+          handleDeleteSelectedPoints={handleDeleteSelectedPoints}
+          setShowDeleteAllModal={setShowDeleteAllModal}
+        />
+      )}
+  
+      {/* INFORMACIÓN DEL PUNTO SELECCIONADO */}
+      {!improveLocation && (
+        <PointInfo 
+          selectedPoint={selectedPoint} 
+          mode={mode} 
+          setSelectedPoint={setSelectedPoint} 
+          extended={true}
+        />
+      )}
+  
+      {/* BOTÓN PARA RESETEAR EL ESTADO DE VISITED */}
+      {!loading && !improveLocation && (
+        <button
+          className="btn btn-primary"
+          onClick={handleResetVisitedStatus}
+          style={{
+            position: 'absolute',
+            bottom: '80px', // Ajusta la posición vertical
+            right: '20px', // Ajusta la posición horizontal
+            zIndex: 1000, // Asegura que esté sobre otros elementos
+          }}
+        >
+          Resetear Estado de Visited
+        </button>
+      )}
+  
+      {/* BOTÓN DE MEJORA DE UBICACIÓN */}
+      {!loading && (
+        <div className="improve-location-control" style={{ 
+          position: 'absolute', 
+          bottom: '20px', 
+          right: '20px'
+        }}>
+          <ImproveLocationButton
+            improveLocation={improveLocation}
+            setImproveLocation={setImproveLocation}
+          />
+        </div>
+      )}
+  
+      {/* MODAL PARA ELIMINAR TODAS LAS UBICACIONES */}
       {showDeleteAllModal && (
         <ConfirmationModal
           id="deleteAllModal"

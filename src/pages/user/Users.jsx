@@ -400,6 +400,7 @@ const Users = () => {
                           type="text" 
                           className={`form-control ${errors.username ? 'is-invalid' : ''}`}
                           id="username" 
+                          name="username"
                           value={selectedUser.username}
                           onChange={handleInputChange}
                           placeholder="Username"

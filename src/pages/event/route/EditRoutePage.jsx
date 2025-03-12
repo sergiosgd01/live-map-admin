@@ -15,6 +15,8 @@ const EditRoutePage = () => {
   useEffect(() => {
     const loadEvent = async () => {
       try {
+        console.log("Cargando evento...");
+        console.log("eventCode:", eventCode);
         setLoading(true);
         const fetchedEvent = await fetchEventByCode(eventCode);
         if (!fetchedEvent) {
@@ -33,12 +35,26 @@ const EditRoutePage = () => {
 
   // Construcción de los breadcrumbs basados en la data del evento
   const organizationCode = eventData?.organizationCode || "";
+  const isMultiDevice = !!eventData?.multiDevice;
+  
   const breadcrumbs = [
     { label: "Organizaciones", path: "/organizations" },
     { label: "Eventos", path: `/organizations/${organizationCode}/events` },
-    { label: "Rutas", path: `/events/${eventCode}/route` },
-    { label: "Editar Ruta", path: "" },
   ];
+
+  if (isMultiDevice) {
+    breadcrumbs.push(
+      { label: "Rutas", path: `/events/${eventCode}/route` },
+    );
+    breadcrumbs.push(
+      { label: "Editar Ruta", path: "" },
+    );
+  } else {
+    // Si no es multiDevice, vamos directo a "Editar Ubicación" sin mostrar "Ubicaciones"
+    breadcrumbs.push(
+      { label: "Editar Ruta", path: "" },
+    );
+  }
 
   // Mientras está cargando, mostramos el Spinner
   if (loading) {

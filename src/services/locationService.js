@@ -25,11 +25,11 @@ export const fetchLocationsByDeviceIdEventCode = async (deviceID, code) => {
 
     // Verificar si hay un mensaje de ausencia de datos
     if (data.message && data.locations?.length === 0) {
-      console.warn(data.message); // Puedes mostrar un mensaje informativo en el frontend
+      console.warn(data.message);
       return []; // Devuelve un array vacío
     }
 
-    return data;
+    return data.locations || data; // Manejar ambos formatos de respuesta
   } catch (error) {
     console.error('Error al obtener las ubicaciones por dispositivo:', error);
     return [];
@@ -45,7 +45,8 @@ export const fetchAddLocation = async (location, eventCode, deviceID) => {
     });
 
     if (!response.ok) {
-      throw new Error('Error al agregar la ubicación');
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error al agregar la ubicación');
     }
 
     return await response.json();
@@ -71,14 +72,21 @@ export const fetchDeleteLocation = async (id) => {
   }
 };
 
-export const fetchDeleteLocationsByDeviceAndEvent = async (eventCode, deviceID) => {
+export const fetchDeleteAllLocations = async (eventCode, deviceID) => {
   try {
-    const response = await fetch(`${API_URL}/event/${eventCode}/device/${deviceID}`, {
+    const url = deviceID 
+      ? `${API_URL}/deleteAll?eventCode=${eventCode}&deviceID=${deviceID}`
+      : `${API_URL}/deleteAll?eventCode=${eventCode}`;
+      
+    const response = await fetch(url, {
       method: 'DELETE',
     });
+    
     if (!response.ok) {
-      throw new Error('Error al eliminar las ubicaciones para el dispositivo y evento especificados');
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error al eliminar las ubicaciones');
     }
+    
     return await response.json();
   } catch (error) {
     console.error('Error al eliminar las ubicaciones:', error);

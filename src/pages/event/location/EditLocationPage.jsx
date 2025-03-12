@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import LocalHeaderLayout from "../../../components/LocalHeaderLayout";
-import EditLocation from "./EditLocation_Improve";
+import EditLocation from "./EditLocation";
 import SharedMap from "../../../components/SharedMap";
 import Spinner from "../../../components/Spinner";
 import { fetchEventByCode } from "../../../services/eventService";
@@ -33,12 +33,28 @@ const EditLocationPage = () => {
 
   // Construcción de los breadcrumbs basados en la data del evento
   const organizationCode = eventData?.organizationCode || "";
+  const isMultiDevice = !!eventData?.multiDevice;
+  
+  // Construimos los breadcrumbs según si es multiDevice o no
   const breadcrumbs = [
     { label: "Organizaciones", path: "/organizations" },
     { label: "Eventos", path: `/organizations/${organizationCode}/events` },
-    { label: "Ubicaciones", path: `/events/${eventCode}/location` },
-    { label: "Editar Ubicación", path: "" },
   ];
+  
+  // Si es multiDevice, incluimos el paso "Ubicaciones" en el breadcrumb
+  if (isMultiDevice) {
+    breadcrumbs.push(
+      { label: "Ubicaciones", path: `/events/${eventCode}/location` }
+    );
+    breadcrumbs.push(
+      { label: "Editar Ubicación", path: "" }
+    );
+  } else {
+    // Si no es multiDevice, vamos directo a "Editar Ubicación" sin mostrar "Ubicaciones"
+    breadcrumbs.push(
+      { label: "Editar Ubicación", path: "" }
+    );
+  }
 
   // Mientras está cargando, mostramos el Spinner
   if (loading) {

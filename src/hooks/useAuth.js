@@ -21,6 +21,9 @@ const useAuth = () => {
       } catch (e) {
         console.error("Error al parsear datos de usuario:", e);
       }
+    } else {
+      // Si no hay token o usuario, aseguramos que isAuthenticated sea false
+      setIsAuthenticated(false);
     }
     
     const checkAuth = async () => {
@@ -39,19 +42,17 @@ const useAuth = () => {
           setIsAuthenticated(true);
           localStorage.setItem('user', JSON.stringify(user));
         } else {
+          // Limpiamos datos si la respuesta fue exitosa pero no devolvió un usuario
           localStorage.removeItem('user');
           localStorage.removeItem('token');
           setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('Error al verificar token:', error);
-        // No limpiamos tokens inmediatamente en caso de errores de red temporales
-        // Solo si es un error de autenticación específico (401/403)
-        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-          localStorage.removeItem('user');
-          localStorage.removeItem('token');
-          setIsAuthenticated(false);
-        }
+        // Limpiamos tokens y autenticación en caso de cualquier error de autenticación
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }

@@ -5,14 +5,18 @@ export const fetchRouteMarkersByEventCode = async (code) => {
   try {
     const response = await fetch(`${API_URL}/${code}`);
     if (!response.ok) {
-      throw new Error('Error al obtener la ruta');
+      throw new Error('Error al obtener los puntos de la ruta');
     }
-
     const data = await response.json();
-    return data.routes || [];
+    
+    // Manejar la respuesta que puede ser un array de rutas o un objeto con mensaje
+    if (data.message && data.routes) {
+      return data.routes; // Devuelve el array vacío incluido en la respuesta
+    }
+    return data; // Devuelve el array de rutas
   } catch (error) {
-    console.error('Error al obtener la ruta:', error);
-    return [];
+    console.error('Error al obtener los puntos de la ruta:', error);
+    throw error;
   }
 };
 
@@ -21,19 +25,20 @@ export const fetchRouteByEventCodeDeviceID = async (code, deviceID) => {
   try {
     const response = await fetch(`${API_URL}/device?code=${code}&deviceID=${deviceID}`);
     if (!response.ok) {
-      throw new Error('Error al obtener la ruta por deviceID');
+      throw new Error('Error al obtener los puntos de la ruta para el dispositivo');
     }
-
+    
     const data = await response.json();
-
+    
+    // Manejar la respuesta que puede tener diferentes formatos
     if (data.message && data.route?.length === 0) {
-      console.warn(data.message); 
-      return []; 
+      console.warn(data.message);
+      return []; // Devuelve un array vacío
     }
-
-    return data;
+    
+    return data.route || data; // Devuelve la ruta o los datos directos
   } catch (error) {
-    console.error('Error al obtener la ruta por deviceID:', error);
+    console.error('Error al obtener los puntos de la ruta por dispositivo:', error);
     return [];
   }
 };
@@ -41,18 +46,28 @@ export const fetchRouteByEventCodeDeviceID = async (code, deviceID) => {
 // Crear un nuevo punto de ruta
 export const fetchCreateRouteMarker = async (code, deviceID, latitude, longitude) => {
   try {
-    const response = await fetch(API_URL, {
+    const response = await fetch(`${API_URL}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ code, deviceID, latitude, longitude }),
+      body: JSON.stringify({
+        code,
+        latitude,
+        longitude,
+        deviceID
+      }),
     });
 
-    const data = await response.json();
-    return data;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error al agregar el punto de ruta');
+    }
+
+    return await response.json();
   } catch (error) {
-    throw new Error('Error de red, por favor intente de nuevo');
+    console.error('Error al agregar el punto de ruta:', error);
+    throw error;
   }
 };
 
@@ -67,30 +82,33 @@ export const fetchDeleteRouteMarker = async (id) => {
       throw new Error('Error al eliminar el punto de la ruta');
     }
 
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
     console.error('Error al eliminar el punto de la ruta:', error);
-    throw new Error('Error de red, por favor intente de nuevo');
+    throw error;
   }
 };
 
 // Eliminar todas las rutas por código de evento y deviceID
 export const fetchDeleteAllRoutes = async (code, deviceID) => {
   try {
-    const response = await fetch(`${API_URL}/event/${code}/device/${deviceID}`, {
+    const url = deviceID
+      ? `${API_URL}/deleteAll?eventCode=${eventCode}&deviceID=${deviceID}`
+      : `${API_URL}/deleteAll?eventCode=${eventCode}`;
+      
+    const response = await fetch(url, {
       method: 'DELETE',
     });
-
+    
     if (!response.ok) {
-      throw new Error('Error al eliminar todas las rutas');
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error al eliminar todos los puntos de la ruta');
     }
-
-    const data = await response.json();
-    return data;
+    
+    return await response.json();
   } catch (error) {
-    console.error('Error al eliminar todas las rutas:', error);
-    throw new Error('Error de red, por favor intente de nuevo');
+    console.error('Error al eliminar todos los puntos de la ruta:', error);
+    throw error;
   }
 };
 

@@ -9,7 +9,7 @@ import ConfirmationModal from '../../components/ConfirmationModal';
 import OptionsModal from '../../components/OptionsModal';
 import Alert from '../../components/Alert';
 import Spinner from '../../components/Spinner';
-import FloatingAddButton from '../../components/FloatingAddButton'; // Importa el FloatingAddButton
+import FloatingAddButton from '../../components/FloatingAddButton';
 
 // Services
 import { 
@@ -51,6 +51,9 @@ const Events = () => {
 
   // Ref para el final de la lista de eventos
   const bottomRef = useRef(null);
+  
+  // Obtener usuario actual del localStorage
+  const currentUser = JSON.parse(localStorage.getItem('user'));
 
   const breadcrumbs = [
     { label: "Organizaciones", path: "/organizations" },
@@ -172,8 +175,24 @@ const Events = () => {
     console.log("Editando el evento:", eventItem);
     setSelectedEvent(eventItem);
     try {
+      // Cargar organizaciones y filtrarlas según permisos del usuario
       const orgs = await fetchOrganizations();
-      setEventOrganizations(orgs);
+      let filteredOrgs;
+      
+      // Si es superadmin, puede ver todas las organizaciones
+      if (currentUser.isSuperAdmin) {
+        filteredOrgs = orgs;
+      } else {
+        // Si no es superadmin, solo muestra las organizaciones que administra
+        filteredOrgs = orgs.filter(org => 
+          currentUser.adminOf?.some(adminOrg => 
+            String(adminOrg.id) === String(org._id) || 
+            String(adminOrg._id) === String(org._id)
+          )
+        );
+      }
+      
+      setEventOrganizations(filteredOrgs);
     } catch (err) {
       console.error('Error al cargar organizaciones:', err);
     }
@@ -242,27 +261,45 @@ const Events = () => {
       const endDate = DateTime.fromISO(selectedEvent.endDate)
         .setZone('Europe/Madrid')
         .toISO();
-      const adjustedEvent = { ...selectedEvent, startDate, endDate };
-
+      // Aseguramos que multiDevice sea un valor booleano
+      const multiDevice = selectedEvent.multiDevice === true;
+      
+      const adjustedEvent = { 
+        ...selectedEvent, 
+        startDate, 
+        endDate,
+        multiDevice 
+      };
+  
       if (selectedEvent._id) {
         // Editar evento
         await updateEvent(selectedEvent.code, adjustedEvent);
         const updatedEvent = await fetchEventByCode(selectedEvent.code);
-        setEvents(events.map(ev => ev._id === updatedEvent._id ? updatedEvent : ev));
+        
+        // Solo mantener el evento en la lista si sigue perteneciendo a la organización actual
+        if (updatedEvent.organizationCode === organizationCode) {
+          setEvents(events.map(ev => ev._id === updatedEvent._id ? updatedEvent : ev));
+        } else {
+          // Si cambió de organización, quitarlo de la lista actual
+          setEvents(events.filter(ev => ev._id !== updatedEvent._id));
+        }
         setAlert({ type: 'success', message: 'Evento actualizado correctamente' });
       } else {
-        // Crear evento: en vez de navegar, se añade el evento a la lista
+        // Crear evento
         const createdEvent = await addEvent(adjustedEvent);
-        setEvents(prevEvents => [...prevEvents, createdEvent.event]);
+        
+        // Solo añadir a la lista si pertenece a la organización actual
+        if (createdEvent.event.organizationCode === organizationCode) {
+          setEvents(prevEvents => [...prevEvents, createdEvent.event]);
+          setTimeout(() => {
+            if (bottomRef.current) {
+              bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+            }
+          }, 200);
+        }
         setAlert({ type: 'success', message: 'Evento creado correctamente' });
-        // Hacemos scroll hasta el final de la lista
-        setTimeout(() => {
-          if (bottomRef.current) {
-            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
-          }
-        }, 200);
       }
-
+  
       // Cerrar el modal
       const modalEl = document.getElementById("editEventModal");
       const modal = window.bootstrap.Modal.getInstance(modalEl);
@@ -280,7 +317,13 @@ const Events = () => {
       console.error("No hay evento seleccionado para editar ubicaciones");
       return;
     }
-    navigate(`/events/${selectedEvent.code}/location`);
+    if (selectedEvent.multiDevice) {
+      // Si es multi-dispositivo, navega a la lista de ubicaciones
+      navigate(`/events/${selectedEvent.code}/location`);
+    } else {
+      // Si no es multi-dispositivo, navega directamente a editar la ubicación con un ID predeterminado
+      navigate(`/events/${selectedEvent.code}/editLocation`);
+    }
   };
 
   const handleEditRoute = () => {
@@ -288,7 +331,14 @@ const Events = () => {
       console.error("No hay evento seleccionado para editar la ruta");
       return;
     }
-    navigate(`/events/${selectedEvent.code}/route`);
+
+    if (selectedEvent.multiDevice) {
+      // Si es multi-dispositivo, navega a la lista de ubicaciones
+      navigate(`/events/${selectedEvent.code}/route`);
+    } else {
+      // Si no es multi-dispositivo, navega directamente a editar la ubicación con un ID predeterminado
+      navigate(`/events/${selectedEvent.code}/editRoute`);
+    }
   };
 
   if (loading) return <Spinner />;
@@ -340,12 +390,30 @@ const Events = () => {
               endDate: '',
               image: '',
               icon: '',
+              multiDevice: false,
               organizationCode: organizationCode, 
             });
             setCancelInfo('');
-            // Cargamos todas las organizaciones para el select
+            // Cargamos las organizaciones filtradas por permisos de usuario
             fetchOrganizations()
-              .then(orgs => setEventOrganizations(orgs))
+              .then(orgs => {
+                let filteredOrgs;
+                
+                // Si es superadmin, puede ver todas las organizaciones
+                if (currentUser.isSuperAdmin) {
+                  filteredOrgs = orgs;
+                } else {
+                  // Si no es superadmin, solo muestra las organizaciones que administra
+                  filteredOrgs = orgs.filter(org => 
+                    currentUser.adminOf?.some(adminOrg => 
+                      String(adminOrg.id) === String(org._id) || 
+                      String(adminOrg._id) === String(org._id)
+                    )
+                  );
+                }
+                
+                setEventOrganizations(filteredOrgs);
+              })
               .catch(err => console.error("Error al cargar organizaciones:", err));
               
             const modalEl = document.getElementById("editEventModal");
@@ -560,6 +628,21 @@ const Events = () => {
                           {eventErrors.organizationCode}
                         </div>
                       )}
+                    </div>
+                    {/* Añadir checkbox para multiDevice */}
+                    <div className="mb-3 form-check">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="multiDevice"
+                        checked={selectedEvent.multiDevice || false}
+                        onChange={(e) =>
+                          setSelectedEvent({ ...selectedEvent, multiDevice: e.target.checked })
+                        }
+                      />
+                      <label className="form-check-label" htmlFor="multiDevice">
+                        Permitir múltiples dispositivos
+                      </label>
                     </div>
                     {selectedEvent._id && (
                       <div className="d-flex flex-wrap gap-2">

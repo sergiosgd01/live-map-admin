@@ -15,7 +15,7 @@ const ConfirmationModal = ({ id, title, message, onConfirm, onCancel, extraConte
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 1050;
+          z-index: 999999;
         }
         .confirmation-modal-container {
           background: #fff;

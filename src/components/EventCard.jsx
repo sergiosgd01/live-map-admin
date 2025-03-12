@@ -71,8 +71,11 @@ const EventCard = ({ event, onEdit, onViewDetails, onDelete }) => {
         {/* Cabecera */}
         <div className="card-header d-flex justify-content-between align-items-center">
           <div className="card-title">{event.name}</div>
-          {event.status === 1 && <span className="badge bg-warning text-dark">Cancelado</span>}
-          {event.status === 2 && <span className="badge bg-danger">Finalizado</span>}
+          <div className="d-flex flex-column align-items-end">
+            {event.multiDevice && <span className="badge bg-success mb-1">Multi-dispositivo</span>}
+            {event.status === 1 && <span className="badge bg-warning text-dark">Cancelado</span>}
+            {event.status === 2 && <span className="badge bg-danger">Finalizado</span>}
+          </div>
         </div>
 
         {/* Detalles y Acciones */}
