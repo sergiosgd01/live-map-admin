@@ -16,7 +16,7 @@ import { fetchEventByCode } from '../../../services/eventService';
 
 import { centerMapBasedOnMarkers } from '../../../utils/mapCentering';
 
-const Service_ = ({ eventCode }) => {
+const Service = ({ eventCode }) => {
   const map = useMap();
   const navigate = useNavigate();
 
@@ -329,8 +329,7 @@ const Service_ = ({ eventCode }) => {
         />
       )}
 
-      {/* Modal de opciones: se muestra al pulsar el botón circular */}
-      {showOptionsModal && (
+{showOptionsModal && (
         <div
           className="modal fade show"
           style={{ display: 'block' }}
@@ -355,22 +354,23 @@ const Service_ = ({ eventCode }) => {
               </div>
               <div className="modal-body">
                 <button
-                  className="btn btn-danger w-100 mb-2"
+                  className="btn w-100 mb-2"
+                  style={{ backgroundColor: '#8A2BE2', color: 'white' }}
+                  onClick={() => {
+                    setShowOptionsModal(false);
+                    navigate(`/services/${eventCode}`); // Pass eventCode in the URL
+                  }}
+                >
+                  Administrar Tipos de Servicio
+                </button>
+                <button
+                  className="btn btn-danger w-100"
                   onClick={() => {
                     setShowOptionsModal(false);
                     setShowDeleteAllModal(true);
                   }}
                 >
                   Eliminar Todos los Servicios
-                </button>
-                <button
-                  className="btn btn-success w-100"
-                  onClick={() => {
-                    setShowOptionsModal(false);
-                    navigate(`/services`);
-                  }}
-                >
-                  Administrar Tipos de Servicio
                 </button>
               </div>
             </div>
@@ -397,4 +397,4 @@ const Service_ = ({ eventCode }) => {
   );
 };
 
-export default Service_;
+export default Service;

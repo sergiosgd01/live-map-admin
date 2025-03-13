@@ -73,7 +73,7 @@ const AppRoutes = () => (
                 <Route path="/events/:eventCode/editLocation" element={<EditLocationPage />} />
                 <Route path="/events/:eventCode/raw-locations" element={<RawLocations />} />
                 <Route path="/events/:eventCode/service" element={<ServicePage />} />
-                <Route path="/services" element={<ServiceType />} />
+                <Route path="/services/:eventCode" element={<ServiceType />} />
                 <Route path="/events/:eventCode/devices" element={<Device />} />
               </Routes>
             </GoogleMapsProvider>

@@ -26,6 +26,7 @@ import { fetchRouteByEventCodeDeviceID, fetchResetVisitedStatusByEventCode } fro
 import { lightenColor, darkenColor } from '../../../utils/colorUtils';
 import { centerMapBasedOnMarkers } from '../../../utils/mapCentering';
 import { getNearestRouteLocations } from '../../../utils/getNearestRouteLocations';
+import colors from '../../../utils/colors';
 
 const EditLocation = ({ eventCode, deviceID }) => {
   const map = useMap();
@@ -49,8 +50,13 @@ const EditLocation = ({ eventCode, deviceID }) => {
   const [deviceRoute, setDeviceRoute] = useState([]);
   const [visitedLocations, setVisitedLocations] = useState([]);
   const [originalLocations, setOriginalLocations] = useState([]);
+  const [lastLocationMarkerTime, setLastLocationMarkerTime] = useState(null);
 
   const [isMultiDevice, setIsMultiDevice] = useState(true); 
+
+  // Estado para mostrar/ocultar los paneles laterales
+  const [showEditPanel, setShowEditPanel] = useState(false);
+  const [showToolsPanel, setShowToolsPanel] = useState(false);
 
   // Autoocultar la alerta después de 5 segundos
   useEffect(() => {
@@ -216,6 +222,7 @@ const EditLocation = ({ eventCode, deviceID }) => {
     }
     redrawPolyline(locationsToUse);
     setLoading(false);
+    setLastLocationMarkerTime(new Date());
   }, [map, eventCode, deviceID, mode, deviceColor, eventPostalCode, visitedLocations, isMultiDevice]);
 
   const redrawPolyline = (markers) => {
@@ -243,27 +250,27 @@ const EditLocation = ({ eventCode, deviceID }) => {
         try {
           console.log("🛠 Activando mejora de ubicación...");
           
-        // Verificar si hay ubicaciones
-        if (originalLocations.length === 0) {
-          console.log("No hay ubicaciones para mejorar");
-          setAlert({ 
-            type: 'warning', 
-            message: 'No hay ubicaciones para mejorar. Añade ubicaciones primero.' 
-          });
-          setImproveLocation(false); // Desactivar el modo de mejora
-          return;
-        }
-        
-        // Verificar si hay ruta
-        if (deviceRoute.length === 0) {
-          console.log("No hay ruta definida para mejorar ubicaciones");
-          setAlert({ 
-            type: 'warning', 
-            message: 'No hay ruta definida para mejorar las ubicaciones. Crea una ruta primero.' 
-          });
-          setImproveLocation(false); // Desactivar el modo de mejora
-          return;
-        }
+          // Verificar si hay ubicaciones
+          if (originalLocations.length === 0) {
+            console.log("No hay ubicaciones para mejorar");
+            setAlert({ 
+              type: 'warning', 
+              message: 'No hay ubicaciones para mejorar. Añade ubicaciones primero.' 
+            });
+            setImproveLocation(false); // Desactivar el modo de mejora
+            return;
+          }
+          
+          // Verificar si hay ruta
+          if (deviceRoute.length === 0) {
+            console.log("No hay ruta definida para mejorar ubicaciones");
+            setAlert({ 
+              type: 'warning', 
+              message: 'No hay ruta definida para mejorar las ubicaciones. Crea una ruta primero.' 
+            });
+            setImproveLocation(false); // Desactivar el modo de mejora
+            return;
+          }
           const visited = await getNearestRouteLocations(originalLocations, deviceRoute);
           setVisitedLocations(visited);
           loadLocationMarkers(true);
@@ -383,25 +390,38 @@ const EditLocation = ({ eventCode, deviceID }) => {
   };
 
   // Función para resetear el estado de visited
-const handleResetVisitedStatus = async () => {
-  try {
-    setLoading(true);
-    await fetchResetVisitedStatusByEventCode(eventCode);
-    setAlert({ type: 'success', message: 'Estado de visited reseteado correctamente.' });
+  const handleResetVisitedStatus = async () => {
+    try {
+      setLoading(true);
+      await fetchResetVisitedStatusByEventCode(eventCode);
+      setAlert({ type: 'success', message: 'Estado de visited reseteado correctamente.' });
 
-    if (improveLocationRef.current) {
-      const visited = await getNearestRouteLocations(originalLocations, deviceRoute);
-      setVisitedLocations(visited);
+      if (improveLocationRef.current) {
+        const visited = await getNearestRouteLocations(originalLocations, deviceRoute);
+        setVisitedLocations(visited);
+      }
+
+      await loadLocationMarkers(true);
+    } catch (error) {
+      console.error('Error al resetear el estado de visited:', error);
+      setAlert({ type: 'danger', message: 'Error al resetear el estado de visited.' });
+    } finally {
+      setLoading(false);
     }
+  };
 
-    await loadLocationMarkers(true);
-  } catch (error) {
-    console.error('Error al resetear el estado de visited:', error);
-    setAlert({ type: 'danger', message: 'Error al resetear el estado de visited.' });
-  } finally {
-    setLoading(false);
-  }
-};
+  const handleUpdateMarkers = async () => {
+    try {
+      setLoading(true);
+      await loadLocationMarkers(true);
+      setAlert({ type: 'success', message: 'Marcadores actualizados correctamente.' });
+    } catch (error) {
+      console.error('Error al actualizar marcadores:', error);
+      setAlert({ type: 'danger', message: 'Error al actualizar marcadores.' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDeleteSelectedPoints = async () => {
     if (selectedMarkers.length === 0) {
@@ -465,6 +485,36 @@ const handleResetVisitedStatus = async () => {
     }
   };
 
+  // Manejador para cambiar entre paneles
+  const togglePanel = (panelName) => {
+    if (panelName === 'edit') {
+      setShowEditPanel(prev => !prev);
+      if (showToolsPanel) setShowToolsPanel(false);
+    } else if (panelName === 'tools') {
+      setShowToolsPanel(prev => !prev);
+      if (showEditPanel) setShowEditPanel(false);
+    }
+  };
+
+  // Componente para el botón de actualizar marcadores
+  const UpdateMarkersButton = ({ fetchData }) => {
+    return (
+      <button
+        className="btn btn-primary w-100"
+        onClick={fetchData}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px'
+        }}
+      >
+        <i className="bi bi-arrow-clockwise"></i>
+        Actualizar Marcadores
+      </button>
+    );
+  };
+
   return (
     <>
       {/* SPINNER DE CARGA */}
@@ -478,57 +528,235 @@ const handleResetVisitedStatus = async () => {
           onClose={() => setAlert(null)} 
         />
       )}
-  
+
+      {/* BOTONES PARA MOSTRAR/OCULTAR PANELES */}
+      {!loading && (
+        <div className="panel-toggle-buttons" style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '20px',
+          display: 'flex',
+          gap: '10px'
+        }}>
+          {/* Botón para panel de edición */}
+          <button 
+            className={`btn ${showEditPanel ? 'btn-primary' : 'btn-outline-light'}`}
+            onClick={() => togglePanel('edit')}
+            title="Edición de ubicaciones"
+            style={{
+              backgroundColor: showEditPanel ? '' : colors.white,
+              color: showEditPanel ? '' : colors.purple,
+              borderColor: showEditPanel ? '' : colors.purple,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              width: '150px', 
+              justifyContent: 'center'  
+            }}
+          >
+            <i className="bi bi-pencil-square"></i> Edición
+          </button>
+          
+          {/* Botón para panel de herramientas */}
+          <button 
+            className={`btn ${showToolsPanel ? 'btn-primary' : 'btn-outline-light'}`}
+            onClick={() => togglePanel('tools')}
+            title="Herramientas"
+            style={{
+              backgroundColor: showToolsPanel ? '' : colors.white,
+              color: showToolsPanel ? '' : colors.purple,
+              borderColor: showToolsPanel ? '' : colors.purple,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              width: '150px', 
+              justifyContent: 'center'  
+            }}
+          >
+            <i className="bi bi-gear"></i> Herramientas
+          </button>
+        </div>
+      )}
+
       {/* PANEL DE EDICIÓN */}
-      {!improveLocation && (
-        <EditPanel
-          title="Editar Ubicaciones"
-          mode={mode}
-          setMode={setMode}
-          handleInsertPoints={handleInsertPoints}
-          handleDeleteSelectedPoints={handleDeleteSelectedPoints}
-          setShowDeleteAllModal={setShowDeleteAllModal}
-        />
+      {showEditPanel && !loading && (
+        <div className="edit-panel-container" style={{
+          position: 'absolute',
+          bottom: '70px',      
+          left: '20px',        
+          backgroundColor: 'white',
+          boxShadow: '0 0 10px rgba(0,0,0,0.2)',
+          borderRadius: '8px',
+          padding: '15px',
+          width: '310px',
+          zIndex: 1000
+        }}>
+          <div className="panel-header" style={{
+            borderBottom: `1px solid ${colors.borderLight}`,
+            paddingBottom: '10px',
+            marginBottom: '15px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <h5 className="m-0">Edición de Ubicaciones</h5>
+            <button 
+              className="btn-close" 
+              onClick={() => setShowEditPanel(false)}
+              aria-label="Cerrar"
+            ></button>
+          </div>
+          
+          <div className="edit-buttons" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+          }}>
+            {/* Botones de modo */}
+            <div className="btn-group w-100 mb-2">
+              <button
+                className={`btn ${mode === 'insert' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => {
+                  if (mode === 'insert') {
+                    setMode('');
+                    clearTemporaryMarkersAndLines();
+                  } else {
+                    setMode('insert');
+                    if (selectedPoint) setSelectedPoint(null);
+                  }
+                }}
+              >
+                <i className="bi bi-plus-circle me-2"></i>
+                Insertar Puntos
+              </button>
+              <button
+                className={`btn ${mode === 'delete' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => {
+                  if (mode === 'delete') {
+                    setMode('');
+                  } else {
+                    setMode('delete');
+                    if (selectedPoint) setSelectedPoint(null);
+                  }
+                }}
+              >
+                <i className="bi bi-trash me-2"></i>
+                Eliminar Puntos
+              </button>
+            </div>
+            
+            {/* Botones de acción según el modo */}
+            {mode === 'insert' && (
+              <button
+                className="btn btn-success w-100"
+                onClick={handleInsertPoints}
+                disabled={newPoints.length === 0}
+              >
+                Guardar {newPoints.length} punto{newPoints.length !== 1 ? 's' : ''}
+              </button>
+            )}
+            
+            {mode === 'delete' && (
+              <button
+                className="btn btn-danger w-100"
+                onClick={handleDeleteSelectedPoints}
+                disabled={selectedMarkers.length === 0}
+              >
+                Eliminar {selectedMarkers.length} punto{selectedMarkers.length !== 1 ? 's' : ''}
+              </button>
+            )}
+            
+            {/* Botón para eliminar todos los puntos */}
+            <button
+              className="btn btn-outline-danger w-100 mt-2"
+              onClick={() => setShowDeleteAllModal(true)}
+            >
+              <i className="bi bi-trash-fill me-2"></i>
+              Eliminar Todos los Puntos
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* PANEL DE HERRAMIENTAS */}
+      {showToolsPanel && !loading && (
+        <div className="tools-panel-container" style={{
+          position: 'absolute',
+          bottom: '70px',      
+          left: '20px',        
+          backgroundColor: 'white',
+          boxShadow: '0 0 10px rgba(0,0,0,0.2)',
+          borderRadius: '8px',
+          padding: '15px',
+          width: '310px',
+          zIndex: 1000
+        }}>
+          <div className="panel-header" style={{
+            borderBottom: `1px solid ${colors.borderLight}`,
+            paddingBottom: '10px',
+            marginBottom: '15px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <h5 className="m-0">Herramientas</h5>
+            <button 
+              className="btn-close" 
+              onClick={() => setShowToolsPanel(false)}
+              aria-label="Cerrar"
+            ></button>
+          </div>
+          
+          <div className="tools-content" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '15px'
+          }}>
+            {/* Botón de mejora de ubicaciones */}
+            <ImproveLocationButton
+              improveLocation={improveLocation}
+              setImproveLocation={setImproveLocation}
+            />
+            
+            {/* Botón para resetear el estado de visited */}
+            <button
+              className="btn btn-warning w-100"
+              onClick={handleResetVisitedStatus}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <i className="bi bi-arrow-counterclockwise"></i>
+              Resetear Estado de Visited
+            </button>
+            
+            {/* Botón de actualización de marcadores */}
+            <UpdateMarkersButton fetchData={handleUpdateMarkers} />
+            
+            {/* Información de última actualización */}
+            {lastLocationMarkerTime && (
+              <div className="timestamp-info" style={{
+                background: colors.lightGray,
+                padding: '10px',
+                borderRadius: '4px',
+                fontSize: '14px'
+              }}>
+                <i className="bi bi-clock me-2"></i>
+                <strong>Última actualización:</strong><br />
+                {new Date(lastLocationMarkerTime).toLocaleString()}
+              </div>
+            )}
+          </div>
+        </div>
       )}
   
       {/* INFORMACIÓN DEL PUNTO SELECCIONADO */}
-      {!improveLocation && (
+      {selectedPoint && !mode && !improveLocation && (
         <PointInfo 
           selectedPoint={selectedPoint} 
           mode={mode} 
           setSelectedPoint={setSelectedPoint} 
           extended={true}
         />
-      )}
-  
-      {/* BOTÓN PARA RESETEAR EL ESTADO DE VISITED */}
-      {!loading && !improveLocation && (
-        <button
-          className="btn btn-primary"
-          onClick={handleResetVisitedStatus}
-          style={{
-            position: 'absolute',
-            bottom: '80px', // Ajusta la posición vertical
-            right: '20px', // Ajusta la posición horizontal
-            zIndex: 1000, // Asegura que esté sobre otros elementos
-          }}
-        >
-          Resetear Estado de Visited
-        </button>
-      )}
-  
-      {/* BOTÓN DE MEJORA DE UBICACIÓN */}
-      {!loading && (
-        <div className="improve-location-control" style={{ 
-          position: 'absolute', 
-          bottom: '20px', 
-          right: '20px'
-        }}>
-          <ImproveLocationButton
-            improveLocation={improveLocation}
-            setImproveLocation={setImproveLocation}
-          />
-        </div>
       )}
   
       {/* MODAL PARA ELIMINAR TODAS LAS UBICACIONES */}

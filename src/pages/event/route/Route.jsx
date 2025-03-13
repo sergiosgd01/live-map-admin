@@ -251,8 +251,9 @@ const Route = ({ eventCode }) => {
           devices={devices}
           showDevice={showDeviceRoutes}
           handleEdit={handleEditRoutes}
-          showAllRoutes={showAllRoutes}
+          showAll={showAllRoutes}
           selectedDevice={selectedDevice}
+          onClose={() => setShowPanel(false)}
         />
       )}
     </>

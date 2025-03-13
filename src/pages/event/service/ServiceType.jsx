@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom"; // Added useParams to get eventCode
 import { fetchServiceTypes, deleteServiceType, addServiceType } from "../../../services/serviceTypeService";
 import ConfirmationModal from "../../../components/ConfirmationModal";
 import LocalHeaderLayout from "../../../components/LocalHeaderLayout";
 import Alert from "../../../components/Alert";
 import Spinner from "../../../components/Spinner";
 import FloatingAddButton from "../../../components/FloatingAddButton";
+import { fetchEventByCode } from "../../../services/eventService"; // Import to get event data
 
 const ServiceType = () => {
+  const { eventCode } = useParams(); 
   const [serviceTypes, setServiceTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,9 +18,34 @@ const ServiceType = () => {
   const [newServiceType, setNewServiceType] = useState({ name: "", image: "" });
   const [addErrors, setAddErrors] = useState({});
   const [alert, setAlert] = useState(null);
+  const [eventData, setEventData] = useState(null);
 
+  // Load event data to get organizationCode
+  useEffect(() => {
+    const loadEvent = async () => {
+      try {
+        if (eventCode) {
+          const fetchedEvent = await fetchEventByCode(eventCode);
+          if (fetchedEvent) {
+            setEventData(fetchedEvent);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading event data:", err);
+      }
+    };
+    loadEvent();
+  }, [eventCode]);
+
+  // Construimos los breadcrumbs
+  const organizationCode = eventData?.organizationCode || "";
+  console.log("organizationCode:", organizationCode);
+  console.log("eventCode:", eventCode);
   const breadcrumbs = [
-    { label: "Administrador Tipos de Servicios", path: "" }
+    { label: "Organizaciones", path: "/organizations" },
+    { label: "Eventos", path: `/organizations/${organizationCode}/events` },
+    { label: "Servicios", path: `/events/${eventCode}/service` },
+    { label: "Tipos de Servicio", path: "" },
   ];
 
   // Cargar la lista de tipos

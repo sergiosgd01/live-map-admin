@@ -20,14 +20,14 @@ const Alert = ({ type, message, onClose }) => {
 
   const { className, title } = getAlertProps(type);
 
-  // Estilos para el contenedor fijo que centra la alerta en pantalla
+  // Estilos para el contenedor fijo que posiciona la alerta en la parte superior
   const fixedContainerStyle = {
     position: 'fixed',
-    top: '50%',
+    top: '20%',
     left: '50%',
-    transform: 'translate(-50%, -50%)',
+    transform: 'translateX(-50%)',
     zIndex: 1050,
-    padding: '1rem 2rem',
+    padding: '0 1rem',
     textAlign: 'center',
     maxWidth: '90%',
   };

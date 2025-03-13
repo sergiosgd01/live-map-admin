@@ -23,6 +23,7 @@ import { fetchEventByCode } from '../../../services/eventService';
 // Utils
 import { lightenColor, darkenColor } from '../../../utils/colorUtils';
 import { centerMapBasedOnMarkers } from '../../../utils/mapCentering';
+import colors from '../../../utils/colors';
 
 const EditRoute = ({ eventCode, deviceID }) => {
   const map = useMap();
@@ -42,6 +43,7 @@ const EditRoute = ({ eventCode, deviceID }) => {
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState(null);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [showEditPanel, setShowEditPanel] = useState(false);
 
   const [isMultiDevice, setIsMultiDevice] = useState(true);
 
@@ -334,6 +336,15 @@ const EditRoute = ({ eventCode, deviceID }) => {
     }
   };
 
+  // Toggle panel function
+  const togglePanel = () => {
+    setShowEditPanel(!showEditPanel);
+    if (mode !== '') {
+      setMode('');
+      clearTemporaryMarkersAndLines();
+    }
+  };
+
   return (
     <>
       {/* SPINNER DE CARGA */}
@@ -347,21 +358,143 @@ const EditRoute = ({ eventCode, deviceID }) => {
         />
       )}
 
-      <EditPanel
-        title="Editar Rutas"
-        mode={mode}
-        setMode={setMode}
-        handleInsertPoints={handleInsertPoints}
-        handleDeleteSelectedPoints={handleDeleteSelectedPoints}
-        setShowDeleteAllModal={setShowDeleteAllModal}
-      />
+      {/* BOTÓN PARA MOSTRAR/OCULTAR PANEL DE EDICIÓN */}
+      {!loading && (
+        <div className="panel-toggle-buttons" style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '20px',
+          display: 'flex',
+          gap: '10px'
+        }}>
+          {/* Botón para panel de edición */}
+          <button 
+            className={`btn ${showEditPanel ? 'btn-primary' : 'btn-outline-light'}`}
+            onClick={() => togglePanel('edit')}
+            title="Edición de ubicaciones"
+            style={{
+              backgroundColor: showEditPanel ? '' : colors.white,
+              color: showEditPanel ? '' : colors.purple,
+              borderColor: showEditPanel ? '' : colors.purple,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              width: '150px', 
+              justifyContent: 'center'  
+            }}
+          >
+            <i className="bi bi-pencil-square"></i> Edición
+          </button>
+        </div>
+      )}
 
-      <PointInfo 
-        selectedPoint={selectedPoint} 
-        mode={mode} 
-        setSelectedPoint={setSelectedPoint} 
-        extended={false}
-      />
+      {/* PANEL DE EDICIÓN */}
+      {showEditPanel && !loading && (
+        <div className="edit-panel-container" style={{
+          position: 'absolute',
+          bottom: '70px',      
+          left: '20px',        
+          backgroundColor: 'white',
+          boxShadow: '0 0 10px rgba(0,0,0,0.2)',
+          borderRadius: '8px',
+          padding: '15px',
+          width: '310px',
+          zIndex: 1000
+        }}>
+          <div className="panel-header" style={{
+            borderBottom: '1px solid #e0e0e0',
+            paddingBottom: '10px',
+            marginBottom: '15px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <h5 className="m-0">Edición de Rutas</h5>
+            <button 
+              className="btn-close" 
+              onClick={() => setShowEditPanel(false)}
+              aria-label="Cerrar"
+            ></button>
+          </div>
+          
+          <div className="edit-buttons" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+          }}>
+            {/* Botones de modo */}
+            <div className="btn-group w-100 mb-2">
+              <button
+                className={`btn ${mode === 'insert' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => {
+                  if (mode === 'insert') {
+                    setMode('');
+                    clearTemporaryMarkersAndLines();
+                  } else {
+                    setMode('insert');
+                    if (selectedPoint) setSelectedPoint(null);
+                  }
+                }}
+              >
+                <i className="bi bi-plus-circle me-2"></i>
+                Insertar Puntos
+              </button>
+              <button
+                className={`btn ${mode === 'delete' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => {
+                  if (mode === 'delete') {
+                    setMode('');
+                  } else {
+                    setMode('delete');
+                    if (selectedPoint) setSelectedPoint(null);
+                  }
+                }}
+              >
+                <i className="bi bi-trash me-2"></i>
+                Eliminar Puntos
+              </button>
+            </div>
+            
+            {/* Botones de acción según el modo */}
+            {mode === 'insert' && (
+              <button
+                className="btn btn-success w-100"
+                onClick={handleInsertPoints}
+                disabled={newPoints.length === 0}
+              >
+                Guardar {newPoints.length} punto{newPoints.length !== 1 ? 's' : ''}
+              </button>
+            )}
+            
+            {mode === 'delete' && (
+              <button
+                className="btn btn-danger w-100"
+                onClick={handleDeleteSelectedPoints}
+                disabled={selectedMarkers.length === 0}
+              >
+                Eliminar {selectedMarkers.length} punto{selectedMarkers.length !== 1 ? 's' : ''}
+              </button>
+            )}
+            
+            {/* Botón para eliminar todos los puntos */}
+            <button
+              className="btn btn-outline-danger w-100 mt-2"
+              onClick={() => setShowDeleteAllModal(true)}
+            >
+              <i className="bi bi-trash-fill me-2"></i>
+              Eliminar Todas las Rutas
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* INFORMACIÓN DEL PUNTO SELECCIONADO */}
+      {selectedPoint && !mode && (
+        <PointInfo 
+          selectedPoint={selectedPoint} 
+          mode={mode} 
+          setSelectedPoint={setSelectedPoint} 
+          extended={false}
+        />
+      )}
 
       {showDeleteAllModal && (
         <ConfirmationModal
