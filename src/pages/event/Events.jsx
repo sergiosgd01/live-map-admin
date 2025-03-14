@@ -261,7 +261,7 @@ const Events = () => {
       const endDate = DateTime.fromISO(selectedEvent.endDate)
         .setZone('Europe/Madrid')
         .toISO();
-      // Aseguramos que multiDevice sea un valor booleano
+      // Ensure multiDevice is a boolean value
       const multiDevice = selectedEvent.multiDevice === true;
       
       const adjustedEvent = { 
@@ -272,23 +272,31 @@ const Events = () => {
       };
   
       if (selectedEvent._id) {
-        // Editar evento
+        // Edit event
         await updateEvent(selectedEvent.code, adjustedEvent);
-        const updatedEvent = await fetchEventByCode(selectedEvent.code);
         
-        // Solo mantener el evento en la lista si sigue perteneciendo a la organización actual
-        if (updatedEvent.organizationCode === organizationCode) {
-          setEvents(events.map(ev => ev._id === updatedEvent._id ? updatedEvent : ev));
-        } else {
-          // Si cambió de organización, quitarlo de la lista actual
-          setEvents(events.filter(ev => ev._id !== updatedEvent._id));
+        // First check if organization has changed
+        const originalOrg = events.find(e => e._id === selectedEvent._id)?.organizationCode;
+        const newOrg = adjustedEvent.organizationCode;
+        
+        // If org code changed and doesn't match current page org, remove from list
+        if (newOrg !== originalOrg && newOrg !== organizationCode) {
+          setEvents(events.filter(ev => ev._id !== selectedEvent._id));
+        } 
+        // Otherwise update the event in the list
+        else {
+          const updatedEvent = await fetchEventByCode(selectedEvent.code);
+          console.log("Updated event:", updatedEvent);
+          setEvents(prevEvents => prevEvents.map(ev => 
+            ev._id === updatedEvent._id ? updatedEvent : ev
+          ));
         }
         setAlert({ type: 'success', message: 'Evento actualizado correctamente' });
       } else {
-        // Crear evento
+        // Create event
         const createdEvent = await addEvent(adjustedEvent);
         
-        // Solo añadir a la lista si pertenece a la organización actual
+        // Only add to the list if it belongs to the current organization
         if (createdEvent.event.organizationCode === organizationCode) {
           setEvents(prevEvents => [...prevEvents, createdEvent.event]);
           setTimeout(() => {
@@ -300,7 +308,7 @@ const Events = () => {
         setAlert({ type: 'success', message: 'Evento creado correctamente' });
       }
   
-      // Cerrar el modal
+      // Close the modal
       const modalEl = document.getElementById("editEventModal");
       const modal = window.bootstrap.Modal.getInstance(modalEl);
       if (modal) modal.hide();

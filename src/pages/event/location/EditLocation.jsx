@@ -543,16 +543,19 @@ const EditLocation = ({ eventCode, deviceID }) => {
             className={`btn ${showEditPanel ? 'btn-primary' : 'btn-outline-light'}`}
             onClick={() => togglePanel('edit')}
             title="Edición de ubicaciones"
+            disabled={improveLocation}
             style={{
               backgroundColor: showEditPanel ? '' : colors.white,
               color: showEditPanel ? '' : colors.purple,
               borderColor: showEditPanel ? '' : colors.purple,
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               width: '150px', 
-              justifyContent: 'center'  
+              justifyContent: 'center', 
+              opacity: improveLocation ? 0.6 : 1, 
             }}
           >
             <i className="bi bi-pencil-square"></i> Edición
+            {improveLocation && <i className="bi bi-lock-fill ms-2" style={{fontSize: '0.8em'}}></i>}
           </button>
           
           {/* Botón para panel de herramientas */}

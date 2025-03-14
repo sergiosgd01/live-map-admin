@@ -1,26 +1,153 @@
-// src/components/OptionsModal.jsx
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import colors from '../utils/colors';
 
 const OptionsModal = ({ selectedEvent, handleEditLocation, handleEditRoute }) => {
-  // Función para ocultar el modal utilizando Bootstrap
+  const navigate = useNavigate();
+
+  // Función mejorada para cerrar el modal completamente
   const hideModal = () => {
     const modalEl = document.getElementById("optionsModal");
     const modal = window.bootstrap.Modal.getInstance(modalEl);
-    if (modal) modal.hide();
+    
+    if (modal) {
+      modal.hide();
+      
+      // Esperar a que termine la animación de ocultamiento
+      setTimeout(() => {
+        // Eliminar backdrop manualmente si sigue existiendo
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => {
+          backdrop.classList.remove('show');
+          backdrop.remove();
+        });
+        
+        // Restaurar el scroll y quitar la clase modal-open del body
+        document.body.style.overflow = '';
+        document.body.classList.remove('modal-open');
+      }, 300);
+    }
   };
+
+  // Define button data with updated icons
+  const buttons = [
+    {
+      text: "Registro Ubicaciones",
+      icon: "bi-list-ul",
+      action: () => {
+        hideModal();
+        setTimeout(() => navigate(`/events/${selectedEvent?.code}/raw-locations`), 300);
+      }
+    },
+    {
+      text: "Editar Ubicaciones",
+      icon: "bi-geo-alt",
+      action: () => {
+        hideModal();
+        setTimeout(() => handleEditLocation(), 300);
+      }
+    },
+    {
+      text: "Editar Ruta",
+      icon: "bi-map",
+      action: () => {
+        hideModal();
+        setTimeout(() => handleEditRoute(), 300);
+      }
+    },
+    {
+      text: "Editar Servicios",
+      icon: "bi-gear-wide-connected",
+      action: () => {
+        hideModal();
+        setTimeout(() => navigate(`/events/${selectedEvent?.code}/service`), 300);
+      }
+    },
+    {
+      text: "Editar Dispositivos",
+      icon: "bi-phone",
+      action: () => {
+        hideModal();
+        setTimeout(() => navigate(`/events/${selectedEvent?.code}/devices`), 300);
+      }
+    }
+  ];
+
+  // Calculate how many buttons to render
+  const buttonCount = buttons.length;
 
   return (
     <>
-      {/* Bloque de estilos internos */}
+      {/* Internal styles */}
       <style>{`
+      .option-button {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 15px 10px;
+        min-height: 120px;
+        height: 100%;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+        background-color: white;
+        color: ${colors.purple};
+        border: 2px solid ${colors.purple};
+        font-weight: bold;
+        font-size: 0.95rem;
+      }
+      
+      .option-button:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        background-color: ${colors.purple};
+        color: white;
+      }
+      
+      .option-button i {
+        font-size: 2.2rem;
+        margin-bottom: 12px;
+      }
+      
+      .modal-content {
+        border-radius: 15px;
+        border: none;
+      }
+      
+      .modal-body {
+        padding: 30px;
+        background-color: #f8f9fa;
+      }
+      
+      .button-container {
+        display: flex;
+        justify-content: center;
+      }
+      
+      /* Media queries to ensure consistent button sizes */
+      @media (min-width: 992px) {
+        .button-col {
+          min-height: 140px;
+        }
+      }
+      
+      @media (min-width: 768px) and (max-width: 991px) {
+        .button-col {
+          min-height: 140px;
+        }
         .option-button {
-          transition: transform 0.2s ease, opacity 0.2s ease;
+          padding: 15px 5px;
         }
-        .option-button:hover {
-          transform: scale(1.05);
-          opacity: 0.9;
+      }
+      
+      @media (max-width: 767px) {
+        .modal-body {
+          padding: 20px 15px;
         }
+        .button-col {
+          min-height: 120px;
+        }
+      }
       `}</style>
 
       <div
@@ -35,94 +162,46 @@ const OptionsModal = ({ selectedEvent, handleEditLocation, handleEditRoute }) =>
         <div className="modal-dialog modal-lg modal-dialog-centered" role="document">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title" id="optionsModalLabel">Opciones del Evento</h5>
+              <h5 className="modal-title" id="optionsModalLabel">
+                Opciones del Evento: {selectedEvent?.name}
+              </h5>
               <button
                 type="button"
-                className="btn btn-close"
-                data-bs-dismiss="modal"
+                className="btn-close"
+                onClick={hideModal}
                 aria-label="Close"
               ></button>
             </div>
             <div className="modal-body">
-              {/* Rejilla para mostrar los botones */}
-              <div className="row g-3">
-                <div className="col-6">
-                  <Link
-                    to={`/events/${selectedEvent?.code}/raw-locations`}
-                    className="btn btn-sm w-100 option-button"
-                    onClick={hideModal}
-                    style={{
-                      backgroundColor: '#0d6efd',
-                      borderColor: '#0d6efd',
-                      color: '#fff'
-                    }}
-                  >
-                    Registro Ubicaciones
-                  </Link>
-                </div>
-                <div className="col-6">
-                  <button
-                    type="button"
-                    className="btn btn-sm w-100 option-button"
-                    onClick={() => {
-                      hideModal();
-                      handleEditLocation();
-                    }}
-                    style={{
-                      backgroundColor: '#198754',
-                      borderColor: '#198754',
-                      color: '#fff'
-                    }}
-                  >
-                    Editar Ubicaciones
-                  </button>
-                </div>
-                <div className="col-6">
-                  <button
-                    type="button"
-                    className="btn btn-sm w-100 option-button"
-                    onClick={() => {
-                      hideModal();
-                      handleEditRoute();
-                    }}
-                    style={{
-                      backgroundColor: '#ffc107',
-                      borderColor: '#ffc107',
-                      color: '#000'
-                    }}
-                  >
-                    Editar Ruta
-                  </button>
-                </div>
-                <div className="col-6">
-                  <Link
-                    to={`/events/${selectedEvent?.code}/service`}
-                    className="btn btn-sm w-100 option-button"
-                    onClick={hideModal}
-                    style={{
-                      backgroundColor: '#0dcaf0',
-                      borderColor: '#0dcaf0',
-                      color: '#fff'
-                    }}
-                  >
-                    Editar Servicios
-                  </Link>
-                </div>
-                {/* Último botón centrado */}
-                <div className="col-6 offset-3">
-                  <Link
-                    to={`/events/${selectedEvent?.code}/devices`}
-                    className="btn btn-sm w-100 option-button"
-                    onClick={hideModal}
-                    style={{
-                      backgroundColor: '#212529',
-                      borderColor: '#212529',
-                      color: '#fff'
-                    }}
-                  >
-                    Editar Dispositivos
-                  </Link>
-                </div>
+              <div className="row g-3 justify-content-center">
+                {buttons.map((button, index) => {
+                  // Calculate appropriate column classes for responsiveness
+                  // 3 columns on large screens, 2 on medium, 1 on small
+                  const colClass = "col-lg-4 col-md-6 col-12 mb-3 button-col";
+                  
+                  // Center last row buttons when not filling the row
+                  const isLastRowWithFewer =
+                    Math.floor(index / 3) === Math.floor((buttonCount - 1) / 3) &&
+                    buttonCount % 3 !== 0;
+                  
+                  const containerClass = isLastRowWithFewer ?
+                    "d-flex justify-content-center" : "";
+                  
+                  return (
+                    <div className={colClass} key={index}>
+                      <div className={containerClass} style={{height: '100%'}}>
+                        <button
+                          type="button"
+                          className="btn option-button w-100"
+                          onClick={button.action}
+                        >
+                          <i className={`bi ${button.icon}`}></i>
+                          <span>{button.text}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

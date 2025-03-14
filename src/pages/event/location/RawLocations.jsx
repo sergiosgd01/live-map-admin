@@ -18,10 +18,14 @@ const RawLocations = () => {
   const [devices, setDevices] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState('ALL');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [organizationCode, setOrganizationCode] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isMultiDevice, setIsMultiDevice] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true); // Por defecto activado
   const tableRef = useRef(null);
+  const refreshIntervalRef = useRef(null);
+  const refreshTimeoutRef = useRef(null);
 
   const breadcrumbs = [
     { label: "Organizaciones", path: "/organizations" },
@@ -64,6 +68,54 @@ const RawLocations = () => {
       ignore = true;
     };
   }, [eventCode]);
+
+  // Control de auto-refresh
+  useEffect(() => {
+    // Limpiar intervalos existentes
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+
+    // Configurar nuevo intervalo si autoRefresh está activo
+    if (autoRefresh && eventCode) {
+      refreshIntervalRef.current = setInterval(() => {
+        refreshLocations();
+      }, 3000); // 30 segundos
+    }
+
+    // Limpieza al desmontar
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, [autoRefresh, eventCode]);
+
+  const refreshLocations = async () => {
+    if (refreshing) return; // Evitar múltiples actualizaciones simultáneas
+    
+    try {
+      setRefreshing(true);
+      await loadLocations();
+      
+      // Mostrar indicador visual durante 1 segundo
+      refreshTimeoutRef.current = setTimeout(() => {
+        setRefreshing(false);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error refreshing locations:', error);
+      setRefreshing(false);
+    }
+  };
+
+  const toggleAutoRefresh = () => {
+    setAutoRefresh(prev => !prev);
+  };
 
   const loadDevices = async () => {
     try {
@@ -151,6 +203,26 @@ const RawLocations = () => {
   </button>
 `;
 
+  // HTML para el botón de autorefresh
+  const autoRefreshButtonHtml = `
+    <button 
+      id="autoRefreshBtn" 
+      class="btn ${autoRefresh ? 'btn-success' : 'btn-secondary'}"
+    >
+      <i class="bi ${refreshing ? 'bi-arrow-clockwise spin' : 'bi-arrow-repeat'}"></i>
+      Auto-refresh ${autoRefresh ? 'ON' : 'OFF'}
+    </button>
+    <style>
+      .spin {
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  `;
+
   // Inicializamos DataTables
   useEffect(() => {
     let dataTable;
@@ -230,13 +302,8 @@ const RawLocations = () => {
         });
       }
 
-      // Configuramos el DOM según si es multiDevice o no
-      let domConfig = isMultiDevice
-        ? "<'row align-items-center justify-content-between'<'col-auto lengthMenu'l><'col-auto deviceDropdown'>>" +
-          "<'row'<'col-12'tr>>" +
-          "<'row justify-content-end'<'col-auto'i>>" +
-          "<'row align-items-center justify-content-between'<'col-auto deleteAllButton'><'col-auto'p>>"
-        : "<'row align-items-center justify-content-between'<'col-auto lengthMenu'l><'col-auto'>>" +
+      // Configuramos el DOM para incluir solo el botón de auto-refresh
+      let domConfig = "<'row align-items-center justify-content-between'<'col-auto lengthMenu'l><'col-auto d-flex'<'deviceDropdown'><'refreshButton'>>>" +
           "<'row'<'col-12'tr>>" +
           "<'row justify-content-end'<'col-auto'i>>" +
           "<'row align-items-center justify-content-between'<'col-auto deleteAllButton'><'col-auto'p>>";
@@ -251,6 +318,7 @@ const RawLocations = () => {
         searching: false,
         scrollX: true,
         responsive: true,
+        order: [[0, 'desc']], // Ordenar por timestamp (columna 0) en orden descendente
         language: {
           lengthMenu: "Mostrar _MENU_ ubicaciones",
           info: "Mostrando _START_ a _END_ de _TOTAL_ ubicaciones",
@@ -281,6 +349,9 @@ const RawLocations = () => {
             });
           }
 
+          // Inyectamos solo el botón de auto-refresh
+          $('.refreshButton').html(autoRefreshButtonHtml);
+
           // Inyectamos el botón de eliminar (siempre)
           $('.deleteAllButton').html(deleteAllButtonHtml);
 
@@ -289,6 +360,12 @@ const RawLocations = () => {
             e.preventDefault();
             setShowDeleteModal(true);
           });
+
+          // Event listener para el botón de auto-refresh
+          $('#autoRefreshBtn').on('click', function(e) {
+            e.preventDefault();
+            toggleAutoRefresh();
+          });
         }
       });
     }
@@ -296,7 +373,19 @@ const RawLocations = () => {
     return () => {
       if (dataTable) dataTable.destroy();
     };
-  }, [filteredLocations, devices, isMultiDevice]);
+  }, [filteredLocations, devices, isMultiDevice, refreshing, autoRefresh]);
+
+  // Actualizar el texto y clase del botón de autorefresh cuando cambia el estado
+  useEffect(() => {
+    const autoRefreshBtn = document.getElementById('autoRefreshBtn');
+    if (autoRefreshBtn) {
+      autoRefreshBtn.className = `btn ${autoRefresh ? 'btn-success' : 'btn-secondary'}`;
+      autoRefreshBtn.innerHTML = `
+        <i class="bi ${refreshing ? 'bi-arrow-clockwise spin' : 'bi-arrow-repeat'}"></i>
+        Auto-refresh ${autoRefresh ? 'ON' : 'OFF'}
+      `;
+    }
+  }, [autoRefresh, refreshing]);
 
   return (
     <LocalHeaderLayout breadcrumbs={breadcrumbs}>
