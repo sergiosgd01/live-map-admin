@@ -22,7 +22,10 @@ const RawLocations = () => {
   const [organizationCode, setOrganizationCode] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isMultiDevice, setIsMultiDevice] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(true); // Por defecto activado
+  const [autoRefresh, setAutoRefresh] = useState(true); 
+
+  const [showControlPanel, setShowControlPanel] = useState(false);
+
   const tableRef = useRef(null);
   const refreshIntervalRef = useRef(null);
   const refreshTimeoutRef = useRef(null);
@@ -81,7 +84,7 @@ const RawLocations = () => {
     if (autoRefresh && eventCode) {
       refreshIntervalRef.current = setInterval(() => {
         refreshLocations();
-      }, 3000); // 30 segundos
+      }, 30000); // 30 segundos
     }
 
     // Limpieza al desmontar
@@ -223,6 +226,53 @@ const RawLocations = () => {
     </style>
   `;
 
+// Modifica el HTML para el botón de herramientas
+const toolsButtonHtml = `
+  <div style="position: relative;">
+    <button 
+      id="toolsBtn" 
+      class="btn ${showControlPanel ? 'btn-primary' : 'btn-outline-secondary'}"
+      style="
+        background-color: ${showControlPanel ? '' : '#ffffff'};
+        color: ${showControlPanel ? '' : '#6f42c1'};
+        border-color: ${showControlPanel ? '' : '#6f42c1'};
+        width: 170px;
+      "
+    >
+      <i class="bi bi-gear me-2"></i> Herramientas
+    </button>
+
+    <div id="controlPanelDropdown" class="position-absolute mb-2" style="
+      display: none; 
+      z-index: 1051; 
+      left: 0;
+      bottom: 100%; /* Posicionar arriba del botón */
+      margin-bottom: 8px; /* Espacio entre botón y panel */
+    ">
+      <div class="card" style="width: 280px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 8px;">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+          <h6 class="mb-0">Opciones</h6>
+          <button type="button" class="btn-close" id="closeControlPanel"></button>
+        </div>
+        <div class="card-body p-3">
+          <div class="mb-3">
+            <button id="autoRefreshControl" class="btn ${autoRefresh ? 'btn-success' : 'btn-secondary'} w-100">
+              <i class="bi ${refreshing ? 'bi-arrow-clockwise spin' : 'bi-arrow-repeat'} me-2"></i>
+              Auto-refresh ${autoRefresh ? 'ON' : 'OFF'}
+            </button>
+          </div>
+          <div>
+            <button id="deleteAllBtn" class="btn btn-danger w-100">
+              <i class="bi bi-trash me-2"></i>
+              Eliminar todas las ubicaciones
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+`;
+
   // Inicializamos DataTables
   useEffect(() => {
     let dataTable;
@@ -302,11 +352,10 @@ const RawLocations = () => {
         });
       }
 
-      // Configuramos el DOM para incluir solo el botón de auto-refresh
-      let domConfig = "<'row align-items-center justify-content-between'<'col-auto lengthMenu'l><'col-auto d-flex'<'deviceDropdown'><'refreshButton'>>>" +
-          "<'row'<'col-12'tr>>" +
-          "<'row justify-content-end'<'col-auto'i>>" +
-          "<'row align-items-center justify-content-between'<'col-auto deleteAllButton'><'col-auto'p>>";
+      let domConfig = "<'row align-items-center justify-content-between'<'col-auto lengthMenu'l><'col-auto d-flex'<'deviceDropdown'>>>" +
+      "<'row'<'col-12'tr>>" +
+      "<'row justify-content-end'<'col-auto'i>>" +
+      "<'row justify-content-between align-items-center'<'col-auto toolsButton'><'col-auto'p>>";
 
       dataTable = $('#hideSearchExample').DataTable({
         data: filteredLocations,
@@ -348,23 +397,40 @@ const RawLocations = () => {
               $('#deviceDropdown').text(newText);
             });
           }
-
-          // Inyectamos solo el botón de auto-refresh
-          $('.refreshButton').html(autoRefreshButtonHtml);
-
-          // Inyectamos el botón de eliminar (siempre)
-          $('.deleteAllButton').html(deleteAllButtonHtml);
-
-          // Event listener para el botón "Eliminar todas las ubicaciones"
-          $('.deleteAllButton').on('click', '.delete-all-btn', function(e) {
-            e.preventDefault();
+        
+          // Inyectamos el botón de herramientas
+          $('.toolsButton').html(toolsButtonHtml);
+          
+          // Event listeners para el panel de control
+          $('#toolsBtn').on('click', function() {
+            $('#controlPanelDropdown').toggle();
+            $(this).toggleClass('btn-primary btn-outline-secondary');
+            if ($(this).hasClass('btn-primary')) {
+              $(this).css({backgroundColor: '', color: '', borderColor: ''});
+            } else {
+              $(this).css({backgroundColor: '#ffffff', color: '#6f42c1', borderColor: '#6f42c1'});
+            }
+          });
+          
+          $('#closeControlPanel').on('click', function() {
+            $('#controlPanelDropdown').hide();
+            $('#toolsBtn').removeClass('btn-primary').addClass('btn-outline-secondary').css({
+              backgroundColor: '#ffffff', 
+              color: '#6f42c1', 
+              borderColor: '#6f42c1'
+            });
+          });
+          
+          $('#autoRefreshControl').on('click', function() {
+            toggleAutoRefresh();
+          });
+          
+          $('#deleteAllBtn').on('click', function() {
             setShowDeleteModal(true);
           });
-
-          // Event listener para el botón de auto-refresh
-          $('#autoRefreshBtn').on('click', function(e) {
-            e.preventDefault();
-            toggleAutoRefresh();
+          
+          $('#deviceSelect').on('change', function() {
+            setSelectedDevice($(this).val());
           });
         }
       });
@@ -390,7 +456,7 @@ const RawLocations = () => {
   return (
     <LocalHeaderLayout breadcrumbs={breadcrumbs}>
       {loading && <Spinner />}
-
+  
       <div className="content-wrapper" style={{ paddingBottom: "50px" }}>
         <div className="row gx-3">
           <div className="col-sm-12 col-12">
@@ -431,7 +497,7 @@ const RawLocations = () => {
           </div>
         </div>
       </div>
-
+  
       {showDeleteModal && (
         <ConfirmationModal
           id="delete-locations-modal"
