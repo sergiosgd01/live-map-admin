@@ -1,10 +1,27 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import colors from '../utils/colors';
 
 const Header = () => {
   const navigate = useNavigate();
   const { userData } = useAuth(); // Usa el hook centralizado
+  
+  // Función para obtener las iniciales del nombre de usuario
+  const getInitials = (username) => {
+    if (!username) return "U";
+    
+    // Si el nombre tiene espacios (nombre y apellido)
+    if (username.includes(' ')) {
+      const parts = username.split(' ');
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    
+    // Si es una sola palabra, usar la primera y segunda letra o solo la primera
+    return username.length > 1 
+      ? username.substring(0, 2).toUpperCase() 
+      : username[0].toUpperCase();
+  };
   
   // Función para manejar el logout
   const handleLogout = () => {
@@ -14,6 +31,11 @@ const Header = () => {
     // Redirigir al usuario a la página de login
     navigate('/login');
   };
+
+  // Obtener el nombre de usuario
+  const username = userData?.username || 'Usuario';
+  // Obtener iniciales
+  const initials = getInitials(username);
 
   return (
     <div className="header">
@@ -32,19 +54,35 @@ const Header = () => {
             <div className="dropdown">
               <a href="#" id="userSettings" className="user-settings" data-toggle="dropdown" aria-haspopup="true">
                 <span className="user-name d-none d-md-block">
-                  {userData?.username || 'Usuario'}
+                  {username}
                 </span> 
                 <span className="avatar">
-                  <img src="/assets/images/user2.png" alt="Admin Templates" />
+                  {/* Reemplazar la imagen con el avatar de iniciales */}
+                  <div 
+                    style={{
+                      backgroundColor: colors.purple,
+                      color: '#fff',
+                      width: '45px',
+                      height: '45px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 'bold',
+                      fontSize: '16px'
+                    }}
+                  >
+                    {initials}
+                  </div>
                   <span className="status online"></span>
                 </span>
               </a>
               <div className="dropdown-menu dropdown-menu-end" aria-labelledby="userSettings">
                 <div className="header-profile-actions">
-                  <a href="/profile">Profile</a>
+                  <a href="/profile">Perfil</a>
                   {/* Botón de Logout */}
                   <a href="#!" onClick={handleLogout}>
-                    Logout
+                    Cerrar sesión
                   </a>
                 </div>
               </div>

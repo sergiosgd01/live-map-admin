@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LocalHeaderLayout from '../../components/LocalHeaderLayout'; 
 import { updateUser } from '../../services/userService'; 
-import useAuth from '../../hooks/useAuth'; // Importamos el hook useAuth
+import useAuth from '../../hooks/useAuth';
 import Spinner from '../../components/Spinner'
 import Alert from '../../components/Alert';
+import colors from '../../utils/colors';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { userData, loading: authLoading } = useAuth(); // Utilizamos el hook useAuth
+  const { userData, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState(null);
@@ -39,6 +40,22 @@ const Profile = () => {
     orders: false,
     alerts: false
   });
+  
+  // Función para obtener las iniciales del nombre de usuario
+  const getInitials = (username) => {
+    if (!username) return "U";
+    
+    // Si el nombre tiene espacios (nombre y apellido)
+    if (username.includes(' ')) {
+      const parts = username.split(' ');
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    
+    // Si es una sola palabra, usar la primera y segunda letra o solo la primera
+    return username.length > 1 
+      ? username.substring(0, 2).toUpperCase() 
+      : username[0].toUpperCase();
+  };
 
   // Efecto para configurar los datos del formulario cuando userData esté disponible
   useEffect(() => {
@@ -192,6 +209,11 @@ const Profile = () => {
     return null;
   }
 
+  // Obtener el nombre de usuario
+  const username = userData?.username || 'Usuario';
+  // Obtener iniciales
+  const initials = getInitials(username);
+
   return (
     <LocalHeaderLayout breadcrumbs={[{ label: "Perfil de Usuario", path: "" }]}>
       <div className="page-wrapper">
@@ -215,11 +237,25 @@ const Profile = () => {
                     {/* Row start */}
                     <div className="row align-items-end">
                       <div className="col-auto">
-                        <img 
-                          src={userData?.avatar || "assets/images/user2.png"} 
-                          className="img-7xx rounded-circle" 
-                          alt="User" 
-                        />
+                        {/* Reemplazar la imagen con el avatar de iniciales */}
+                        <div 
+                          style={{
+                            backgroundColor: colors.purple,
+                            color: '#fff',
+                            width: '120px',          // Aumentado de 80px a 120px
+                            height: '120px',         // Aumentado de 80px a 120px
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            fontSize: '48px',        // Aumentado de 32px a 48px
+                            border: '4px solid white', // Opcional: añadir un borde para destacarlo
+                            boxShadow: '0 4px 8px rgba(0,0,0,0.1)' // Opcional: añadir sombra
+                          }}
+                        >
+                          {initials}
+                        </div>
                       </div>
                       <div className="col">
                         <h6>{getUserType()}</h6>
@@ -251,7 +287,7 @@ const Profile = () => {
                                 className={`nav-link ${activeTab === 'settings' ? 'active' : ''}`} 
                                 onClick={() => handleTabChange('settings')}
                               >
-                                Settings
+                                Ajustes
                               </button>
                             </li>
                           </ul>
@@ -330,46 +366,49 @@ const Profile = () => {
                               <div className="card-body">
                                 {/* Row start */}
                                 <div className="row gx-3">
-                                  <div className="col-sm-6 col-12">
+                                  <div className="col-sm-6 col-12 mb-3">
                                     {/* Card start */}
                                     <div className="card">
+                                      <div className="card-header">
+                                        <h5 className="card-title">Preferencias de usuario</h5>
+                                      </div>
                                       <div className="card-body">
                                         <ul className="list-group">
                                           <li className="list-group-item d-flex justify-content-between align-items-center">
-                                            Show desktop notifications
+                                            Modo oscuro
                                             <div className="form-check form-switch m-0">
                                               <input 
                                                 className="form-check-input" 
                                                 type="checkbox" 
                                                 role="switch"
-                                                id="desktopNotifications"
-                                                checked={switches.desktopNotifications}
+                                                id="darkMode"
+                                                checked={switches.darkMode || false}
                                                 onChange={handleSwitchChange}
                                               />
                                             </div>
                                           </li>
                                           <li className="list-group-item d-flex justify-content-between align-items-center">
-                                            Show email notifications
+                                            Activar notificaciones
                                             <div className="form-check form-switch m-0">
                                               <input 
                                                 className="form-check-input" 
                                                 type="checkbox" 
                                                 role="switch" 
-                                                id="emailNotifications"
-                                                checked={switches.emailNotifications}
+                                                id="enableNotifications"
+                                                checked={switches.enableNotifications || false}
                                                 onChange={handleSwitchChange}
                                               />
                                             </div>
                                           </li>
                                           <li className="list-group-item d-flex justify-content-between align-items-center">
-                                            Show chat notifications
+                                            Recordar usuario
                                             <div className="form-check form-switch m-0">
                                               <input 
                                                 className="form-check-input" 
                                                 type="checkbox" 
                                                 role="switch"
-                                                id="chatNotifications"
-                                                checked={switches.chatNotifications}
+                                                id="rememberUser"
+                                                checked={switches.rememberUser || false}
                                                 onChange={handleSwitchChange}
                                               />
                                             </div>
@@ -382,54 +421,51 @@ const Profile = () => {
                                   <div className="col-sm-6 col-12">
                                     {/* Card start */}
                                     <div className="card">
+                                      <div className="card-header">
+                                        <h5 className="card-title">Idioma</h5>
+                                      </div>
                                       <div className="card-body">
-                                        <ul className="list-group">
-                                          <li className="list-group-item d-flex justify-content-between align-items-center">
-                                            Show purchase history
-                                            <div className="form-check form-switch m-0">
-                                              <input 
-                                                className="form-check-input" 
-                                                type="checkbox" 
-                                                role="switch"
-                                                id="purchaseHistory"
-                                                checked={switches.purchaseHistory}
-                                                onChange={handleSwitchChange}
-                                              />
-                                            </div>
-                                          </li>
-                                          <li className="list-group-item d-flex justify-content-between align-items-center">
-                                            Show orders
-                                            <div className="form-check form-switch m-0">
-                                              <input 
-                                                className="form-check-input" 
-                                                type="checkbox" 
-                                                role="switch"
-                                                id="orders"
-                                                checked={switches.orders}
-                                                onChange={handleSwitchChange}
-                                              />
-                                            </div>
-                                          </li>
-                                          <li className="list-group-item d-flex justify-content-between align-items-center">
-                                            Show alerts
-                                            <div className="form-check form-switch m-0">
-                                              <input 
-                                                className="form-check-input" 
-                                                type="checkbox" 
-                                                role="switch"
-                                                id="alerts"
-                                                checked={switches.alerts}
-                                                onChange={handleSwitchChange}
-                                              />
-                                            </div>
-                                          </li>
-                                        </ul>
+                                        <div className="mb-3">
+                                          <label htmlFor="languageSelect" className="form-label">Seleccionar idioma</label>
+                                          <select 
+                                            id="languageSelect" 
+                                            className="form-select" 
+                                            value={formData.language || 'es'}
+                                            onChange={(e) => setFormData({...formData, language: e.target.value})}
+                                          >
+                                            <option value="es">Español</option>
+                                            <option value="en">English</option>
+                                            <option value="fr">Français</option>
+                                            <option value="de">Deutsch</option>
+                                            <option value="it">Italiano</option>
+                                            <option value="pt">Português</option>
+                                          </select>
+                                          <div className="form-text mt-2">
+                                            El cambio de idioma se aplicará la próxima vez que inicies sesión.
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
                                 </div>
+                                
+                                <div className="row mt-3">
+                                  <div className="col-12 text-end">
+                                    <button type="button" className="btn btn-secondary me-2">
+                                      Restablecer ajustes
+                                    </button>
+                                    <button type="button" className="btn btn-primary">
+                                      Guardar ajustes
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
+
+
+
+
+
                           </div>
                         </div>
                       </div>
