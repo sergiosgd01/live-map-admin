@@ -220,7 +220,7 @@ const Events = () => {
   const validateEventForm = async () => {
     if (!selectedEvent) return false;
     const newErrors = {};
-
+  
     if (!selectedEvent.name || selectedEvent.name.trim() === '') {
       newErrors.name = 'El nombre no puede estar vacío';
     }
@@ -246,6 +246,24 @@ const Events = () => {
     if (!selectedEvent.organizationCode || selectedEvent.organizationCode === '') {
       newErrors.organizationCode = 'Debe seleccionar una organización';
     }
+    
+    // Validación para imagen e icono
+    if (selectedEvent.image && selectedEvent.image.trim() !== '') {
+      try {
+        new URL(selectedEvent.image);
+      } catch (err) {
+        newErrors.image = 'La URL de imagen no es válida';
+      }
+    }
+    
+    if (selectedEvent.icon && selectedEvent.icon.trim() !== '') {
+      try {
+        new URL(selectedEvent.icon);
+      } catch (err) {
+        newErrors.icon = 'La URL del icono no es válida';
+      }
+    }
+    
     setEventErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -268,7 +286,9 @@ const Events = () => {
         ...selectedEvent, 
         startDate, 
         endDate,
-        multiDevice 
+        image: selectedEvent.image, 
+        icon: selectedEvent.icon,
+        multiDevice
       };
   
       if (selectedEvent._id) {
@@ -579,7 +599,7 @@ const Events = () => {
                       <label htmlFor="eventImage" className="form-label">Imagen (URL)</label>
                       <input
                         type="text"
-                        className="form-control"
+                        className={`form-control ${eventErrors.image ? 'is-invalid' : ''}`}
                         id="eventImage"
                         value={selectedEvent.image || ''}
                         onChange={(e) =>
@@ -597,7 +617,7 @@ const Events = () => {
                       <label htmlFor="eventIcon" className="form-label">Icono (URL)</label>
                       <input
                         type="text"
-                        className="form-control"
+                        className={`form-control ${eventErrors.icon ? 'is-invalid' : ''}`}
                         id="eventIcon"
                         value={selectedEvent.icon || ''}
                         onChange={(e) =>

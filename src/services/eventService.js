@@ -44,6 +44,7 @@ export const fetchEventById = async (id) => {
 // Actualizar un evento
 export const updateEvent = async (eventCode, updatedEvent) => {
   try {
+    console.log('updatedEvent:', updatedEvent);
     const response = await fetch(`${API_URL}/editEvent/${eventCode}`, {
       method: 'PUT',
       headers: {

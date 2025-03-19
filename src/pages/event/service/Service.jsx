@@ -71,7 +71,9 @@ const Service = ({ eventCode }) => {
     try {
       const services = await fetchService(eventCode);
       if (!services || services.length === 0) {
+        console.log('No hay servicios para mostrar.');
         if (shouldCenter) {
+          console.log('centerMapBasedOnMarkers', eventPostalCode);
           centerMapBasedOnMarkers(map, false, eventPostalCode);
         }
         return;
@@ -329,7 +331,7 @@ const Service = ({ eventCode }) => {
         />
       )}
 
-{showOptionsModal && (
+      {showOptionsModal && (
         <div
           className="modal fade show"
           style={{ display: 'block' }}

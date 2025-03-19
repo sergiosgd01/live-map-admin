@@ -20,7 +20,7 @@ import {
 } from '../../../services/locationService';
 import { fetchDeviceByDeviceIDEventCode } from '../../../services/deviceService';
 import { fetchEventByCode } from '../../../services/eventService';
-import { fetchRouteByEventCodeDeviceID, fetchResetVisitedStatusByEventCode } from '../../../services/routeService';
+import { fetchRouteMarkersByEventCode, fetchRouteByEventCodeDeviceID, fetchResetVisitedStatusByEventCode } from '../../../services/routeService';
 
 // Utils
 import { lightenColor, darkenColor } from '../../../utils/colorUtils';

@@ -8,10 +8,21 @@ export const fetchService = async (code) => {
     if (!response.ok) {
       throw new Error('Error al obtener los servicios');
     }
-    return await response.json();
+    
+    const data = await response.json();
+    
+    // Comprueba si la respuesta es un mensaje de "no se encontraron servicios"
+    if (data.message && data.services) {
+      // Si viene con el formato { message: '...', services: [] }
+      return data.services; // Retorna el array vacío de servicios
+    }
+    
+    // Si es un array directo de servicios (caso exitoso)
+    return data;
   } catch (error) {
     console.error('Error al obtener los servicios:', error);
-    throw error;
+    // En caso de error real, devolvemos un array vacío
+    return [];
   }
 };
 
