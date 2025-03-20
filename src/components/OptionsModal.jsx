@@ -5,7 +5,7 @@ import colors from '../utils/colors';
 const OptionsModal = ({ selectedEvent, handleEditLocation, handleEditRoute }) => {
   const navigate = useNavigate();
 
-  // Función mejorada para cerrar el modal completamente
+  // Función para cerrar el modal completamente
   const hideModal = () => {
     const modalEl = document.getElementById("optionsModal");
     const modal = window.bootstrap.Modal.getInstance(modalEl);
@@ -15,22 +15,27 @@ const OptionsModal = ({ selectedEvent, handleEditLocation, handleEditRoute }) =>
       
       // Esperar a que termine la animación de ocultamiento
       setTimeout(() => {
-        // Eliminar backdrop manualmente si sigue existiendo
         const backdrops = document.querySelectorAll('.modal-backdrop');
         backdrops.forEach(backdrop => {
           backdrop.classList.remove('show');
           backdrop.remove();
         });
-        
-        // Restaurar el scroll y quitar la clase modal-open del body
         document.body.style.overflow = '';
         document.body.classList.remove('modal-open');
       }, 300);
     }
   };
 
-  // Define button data with updated icons
+  // Arreglo de botones
   const buttons = [
+    {
+      text: "Vista Combinada",
+      icon: "bi-display",
+      action: () => {
+        hideModal();
+        setTimeout(() => navigate(`/events/${selectedEvent?.code}/combinedView`), 300);
+      }
+    },
     {
       text: "Registro Ubicaciones",
       icon: "bi-list-ul",
@@ -73,12 +78,18 @@ const OptionsModal = ({ selectedEvent, handleEditLocation, handleEditRoute }) =>
     }
   ];
 
-  // Calculate how many buttons to render
-  const buttonCount = buttons.length;
+  // Filtrar botón "Editar Dispositivos" si el evento no admite múltiples dispositivos
+  const filteredButtons = buttons.filter(button => {
+    if (button.text === "Editar Dispositivos" && selectedEvent?.multiDevice === false) {
+      return false;
+    }
+    return true;
+  });
+
+  const buttonCount = filteredButtons.length;
 
   return (
     <>
-      {/* Internal styles */}
       <style>{`
       .option-button {
         display: flex;
@@ -109,6 +120,18 @@ const OptionsModal = ({ selectedEvent, handleEditLocation, handleEditRoute }) =>
         margin-bottom: 12px;
       }
       
+      .option-button.highlight {
+        background-color: ${colors.purple};
+        color: white;
+        border: 2px solid ${colors.purple};
+      }
+      
+      .option-button.highlight:hover {
+        background-color: ${colors.darkPurple || '#3b0e65'};
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+      }
+      
       .modal-content {
         border-radius: 15px;
         border: none;
@@ -124,7 +147,6 @@ const OptionsModal = ({ selectedEvent, handleEditLocation, handleEditRoute }) =>
         justify-content: center;
       }
       
-      /* Media queries to ensure consistent button sizes */
       @media (min-width: 992px) {
         .button-col {
           min-height: 140px;
@@ -174,25 +196,19 @@ const OptionsModal = ({ selectedEvent, handleEditLocation, handleEditRoute }) =>
             </div>
             <div className="modal-body">
               <div className="row g-3 justify-content-center">
-                {buttons.map((button, index) => {
-                  // Calculate appropriate column classes for responsiveness
-                  // 3 columns on large screens, 2 on medium, 1 on small
+                {filteredButtons.map((button, index) => {
                   const colClass = "col-lg-4 col-md-6 col-12 mb-3 button-col";
-                  
-                  // Center last row buttons when not filling the row
                   const isLastRowWithFewer =
                     Math.floor(index / 3) === Math.floor((buttonCount - 1) / 3) &&
                     buttonCount % 3 !== 0;
-                  
-                  const containerClass = isLastRowWithFewer ?
-                    "d-flex justify-content-center" : "";
+                  const containerClass = isLastRowWithFewer ? "d-flex justify-content-center" : "";
                   
                   return (
                     <div className={colClass} key={index}>
                       <div className={containerClass} style={{height: '100%'}}>
                         <button
                           type="button"
-                          className="btn option-button w-100"
+                          className={`btn option-button w-100 ${button.highlight ? 'highlight' : ''}`}
                           onClick={button.action}
                         >
                           <i className={`bi ${button.icon}`}></i>

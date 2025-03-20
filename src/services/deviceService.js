@@ -175,3 +175,39 @@ export const deleteDeviceById = async (id) => {
     throw error;
   }
 };
+
+/**
+ * 6) CREAR UN NUEVO DISPOSITIVO
+ *    POST /device/create
+ */
+export const createDevice = async (deviceData) => {
+  try {
+    console.log('Creando dispositivo:', deviceData);
+    const response = await fetch(`${API_URL}/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(deviceData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error al crear el dispositivo');
+    }
+
+    // El backend retorna { success: true, device: {...} }
+    const data = await response.json();
+    
+    if (data.success && data.device) {
+      return data.device;
+    }
+
+    console.warn('Respuesta desconocida del servidor:', data);
+    return data;
+
+  } catch (error) {
+    console.error('Error al crear el dispositivo:', error);
+    throw error;
+  }
+};

@@ -3,7 +3,8 @@ import { useParams } from "react-router-dom";
 import { 
   fetchDevicesByEventCode, 
   deleteDeviceById, 
-  updateDevice 
+  updateDevice,
+  createDevice // <-- Asegúrate de que createDevice exista en el service
 } from "../../../services/deviceService";
 import { fetchEventByCode } from "../../../services/eventService"; 
 import LocalHeaderLayout from "../../../components/LocalHeaderLayout";
@@ -11,6 +12,7 @@ import Alert from "../../../components/Alert";
 import Spinner from "../../../components/Spinner";
 import ConfirmationModal from "../../../components/ConfirmationModal";
 import { SketchPicker } from "react-color";
+import FloatingAddButton from "../../../components/FloatingAddButton";
 
 const Device = () => {
   const { eventCode } = useParams();
@@ -21,7 +23,7 @@ const Device = () => {
   const [alert, setAlert] = useState(null);
   const [organizationCode, setOrganizationCode] = useState(''); 
 
-  // Estado para el dispositivo que se va a editar y los errores de validación
+  // Estado para el dispositivo que se va a editar/agregar y los errores de validación
   const [selectedDeviceForEdit, setSelectedDeviceForEdit] = useState(null);
   const [editErrors, setEditErrors] = useState({});
 
@@ -37,13 +39,10 @@ const Device = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Fetch event data to get organization code
         const eventData = await fetchEventByCode(eventCode);
         if (eventData && eventData.organizationCode) {
           setOrganizationCode(eventData.organizationCode);
         }
-
-        // Fetch devices
         const deviceData = await fetchDevicesByEventCode(eventCode);
         setDevices(deviceData);
       } catch (err) {
@@ -77,7 +76,6 @@ const Device = () => {
     }
   };
 
-  // Manejo del envío del formulario de edición con validación inline
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (selectedDeviceForEdit) {
@@ -85,7 +83,8 @@ const Device = () => {
       if (!selectedDeviceForEdit.name || selectedDeviceForEdit.name.trim() === "") {
         errors.name = "El nombre es obligatorio.";
       }
-      if (!selectedDeviceForEdit.order || isNaN(selectedDeviceForEdit.order)) {
+      // Solo se valida "order" si se está editando, ya que en creación se asigna automáticamente
+      if (selectedDeviceForEdit._id && (!selectedDeviceForEdit.order || isNaN(selectedDeviceForEdit.order))) {
         errors.order = "El orden es obligatorio y debe ser un número.";
       }
       if (!selectedDeviceForEdit.color || selectedDeviceForEdit.color.trim() === "") {
@@ -98,15 +97,27 @@ const Device = () => {
         setEditErrors({});
       }
       try {
-        await updateDevice(
-          selectedDeviceForEdit.deviceID,
-          selectedDeviceForEdit.eventCode,
-          selectedDeviceForEdit
-        );
-        setDevices(devices.map(d => 
-          d._id === selectedDeviceForEdit._id ? selectedDeviceForEdit : d
-        ));
-        setAlert({ type: "success", message: "Dispositivo actualizado correctamente." });
+        if (selectedDeviceForEdit._id) {
+          // Modo edición
+          await updateDevice(
+            selectedDeviceForEdit.deviceID,
+            selectedDeviceForEdit.eventCode,
+            selectedDeviceForEdit
+          );
+          setDevices(devices.map(d => 
+            d._id === selectedDeviceForEdit._id ? selectedDeviceForEdit : d
+          ));
+          setAlert({ type: "success", message: "Dispositivo actualizado correctamente." });
+        } else {
+          // Modo creación: eliminamos order para usar el valor autogenerado por el backend
+          const deviceData = { ...selectedDeviceForEdit };
+          delete deviceData.order;
+          // Opcional: si deviceID es requerido, se puede asignar un valor o dejarlo null
+          // deviceData.deviceID = deviceData.deviceID || null;
+          const newDevice = await createDevice(deviceData);
+          setDevices([...devices, newDevice]);
+          setAlert({ type: "success", message: "Dispositivo creado correctamente." });
+        }
         // Cerrar el modal
         const modalEl = document.getElementById("editDeviceModal");
         if (modalEl) {
@@ -115,8 +126,30 @@ const Device = () => {
         }
         setSelectedDeviceForEdit(null);
       } catch (err) {
-        setAlert({ type: "danger", message: "Error al actualizar el dispositivo: " + err.message });
+        const action = selectedDeviceForEdit._id ? "actualizar" : "crear";
+        setAlert({ type: "danger", message: `Error al ${action} el dispositivo: ` + err.message });
       }
+    }
+  };
+
+  const handleAdd = () => {
+    setSelectedDeviceForEdit({
+        name: "",
+        deviceID: "DEVICE_" + Date.now(), // Agrega un valor único para deviceID
+        order: "",
+        color: "#000000",
+        icon: "",
+        eventCode: eventCode
+    });
+    setEditErrors({});
+    const modalEl = document.getElementById("editDeviceModal");
+    if (modalEl) {
+        const formEl = modalEl.querySelector("form");
+        if (formEl) formEl.classList.remove("was-validated");
+        const modal = new window.bootstrap.Modal(modalEl);
+        modal.show();
+    } else {
+        console.error("No se encontró el modal 'editDeviceModal'");
     }
   };
 
@@ -150,7 +183,7 @@ const Device = () => {
                     <th className="fw-bold">Nombre</th>
                     <th className="fw-bold">Order</th>
                     <th className="fw-bold">Color</th>
-                    <th className="fw-bold">ID</th>
+                    <th className="fw-bold">Icono</th>
                     <th className="fw-bold">Código del Evento</th>
                     <th className="fw-bold">Acciones</th>
                   </tr>
@@ -172,7 +205,17 @@ const Device = () => {
                           {device.color}
                         </span>
                       </td>
-                      <td>{device.deviceID}</td>
+                      <td>
+                        {device.icon ? (
+                          <img 
+                            src={device.icon} 
+                            alt="Icono" 
+                            style={{ maxHeight: '30px', maxWidth: '30px' }} 
+                          />
+                        ) : (
+                          <span className="text-muted">Sin icono</span>
+                        )}
+                      </td>
                       <td>{device.eventCode}</td>
                       <td>
                         <div className="d-flex flex-column flex-md-row justify-content-center">
@@ -353,6 +396,9 @@ const Device = () => {
           </div>
         </div>
       </div>
+
+      {/* Botón flotante para agregar dispositivo */}
+      <FloatingAddButton onClick={handleAdd} />
     </LocalHeaderLayout>
   );
 };

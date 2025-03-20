@@ -11,6 +11,7 @@ import Profile from "../pages/userMenu/Profile";
 import Users from "../pages/user/Users";
 import Organizations from "../pages/organization/Organizations";
 import Events from "../pages/event/Events";
+import CombinedViewPage from "../pages/event/CombinedViewPage";
 import RoutePage from "../pages/event/route/RoutePage";
 import EditRoutePage from "../pages/event/route/EditRoutePage";
 import LocationPage from "../pages/event/location/LocationPage";
@@ -65,6 +66,7 @@ const AppRoutes = () => (
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/organizations" element={<Organizations />} />
                 <Route path="/organizations/:organizationCode/events" element={<Events />} />
+                <Route path="/events/:eventCode/combinedView" element={<CombinedViewPage />} />
                 <Route path="/events/:eventCode/route" element={<RoutePage />} />
                 <Route path="/events/:eventCode/route/:deviceID/edit" element={<EditRoutePage />} />
                 <Route path="/events/:eventCode/editRoute" element={<EditRoutePage />} />
